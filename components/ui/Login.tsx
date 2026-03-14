@@ -1,4 +1,4 @@
-export function TelaDeLog() {
+export default function TelaDeLog() {
   return (
     <div className="flex flex-row items-center gap-40 justify-center bg-blue-900 h-screen w-screen">
       {/* Parte da logo e descrição */}
