@@ -1,23 +1,44 @@
+"use client";
+
+import BrandingSection from "./BrandingSection";
+import LoginCard from "./LoginCard";
+
 export default function TelaDeLog() {
+  function handleLogin(
+    username: string,
+    password: string,
+    remember: boolean
+  ) {
+    console.log("Login:", { username, password, remember });
+  }
+
   return (
-    <div className="flex flex-row items-center gap-40 justify-center bg-blue-900 h-screen w-screen">
-      {/* Parte da logo e descrição */}
-      <div className="flex-col items-center bg-white justify-center w-150 h-180">
-        Teste 1
-      </div>
-      {/* Parte que vai ter o login de fato */}
-      <div className="flex flex-col items-center rounded-xl bg-blue-950 gap-5 w-150 h-180 text-black">
-        <div className="flex flex-col items-center bg-white h-40 w-120 mt-10">
-          Parte pro bem-vindo de volta e as letras pequenas
+    <div
+      className="relative min-h-screen w-full flex items-center justify-center overflow-hidden"
+      style={{ background: "linear-gradient(135deg, #141220 0%, #1E1461 60%, #141220 100%)" }}
+    >
+      {/* Glow central sutil */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background:
+            "radial-gradient(ellipse 70% 60% at 50% 50%, rgba(30,20,97,0.55) 0%, transparent 80%)",
+        }}
+      />
+
+      {/* Layout de duas colunas */}
+      <div className="relative z-10 w-full max-w-5xl mx-auto px-6 py-12 flex flex-col md:flex-row items-center gap-16 lg:gap-24">
+        {/* Coluna esquerda — branding */}
+        <div className="flex-1 flex justify-center md:justify-start">
+          <BrandingSection />
         </div>
-        <div className="flex flex-col items-center bg-white h-30 w-120">
-          Parte pro "usuário" e o input de usuário
-        </div>
-        <div className="flex flex-col items-center bg-white h-30 w-120">
-          Parte pra "Senha" e o input de senha
-        </div>
-        <div className="flex flex-col items-center bg-white h-40 w-120">
-          Div do final com botão de entrar, mostrar senha e esqueci a senha
+
+        {/* Divisória vertical — visível só em desktop */}
+        <div className="hidden md:block w-px self-stretch bg-[#334155] opacity-50" />
+
+        {/* Coluna direita — card de login */}
+        <div className="flex-1 flex justify-center md:justify-end">
+          <LoginCard onSubmit={handleLogin} />
         </div>
       </div>
     </div>
