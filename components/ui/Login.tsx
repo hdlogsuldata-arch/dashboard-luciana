@@ -2,14 +2,33 @@
 
 import BrandingSection from "./BrandingSection";
 import LoginCard from "./LoginCard";
+import { useState } from "react";
+import { useAuth } from "@/app/auth/AuthContext";
 
 export default function TelaDeLog() {
-  function handleLogin(
+  const { login } = useAuth();
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  async function handleLogin(
     username: string,
     password: string,
     remember: boolean
   ) {
-    console.log("Login:", { username, password, remember });
+    setIsLoading(true);
+    setError("");
+    try {
+      await login(username, password, remember);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "";
+      console.log("Erro no login:", err);
+      if (message === "Credenciais inválidas") {
+        setError("Email ou senha incorretos.");
+      } else {
+        setError("Ocorreu um erro, tente novamente.");
+      }
+      setIsLoading(false);
+    }
   }
 
   return (
@@ -38,7 +57,7 @@ export default function TelaDeLog() {
 
         {/* Coluna direita — card de login */}
         <div className="flex-1 flex justify-center md:justify-end">
-          <LoginCard onSubmit={handleLogin} />
+          <LoginCard onSubmit={handleLogin} loading={isLoading} error={error} />
         </div>
       </div>
     </div>
