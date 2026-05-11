@@ -1,0 +1,256 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Veiculo {                                                                                    
+  id           Int       @id @default(autoincrement())                                             
+  placa        String    @unique                                                                   
+  tipo         String    // TRUCK, TOCO
+  disponivel   Boolean                                                                             
+  marca        String?
+  modelo       String?
+  capacidade   Float?
+  ano          Int?
+  carroceria   String?
+  eixos        Int?
+  combustivel  String?
+  rastreado    Boolean
+  marcaRastreador String?
+  kmOdometro   Int?
+  tagPedagio   String?
+  unidResp     String?
+  ultimoMvto   DateTime?
+
+  motoristaId  Int?
+  motorista    Motorista? @relation(fields: [motoristaId], references: [id])
+
+  updatedAt DateTime @updatedAt
+}
+
+model Ctrc {                                                                                       
+  id            Int     @id @default(autoincrement())                                              
+  numero        String  // "121785-2"                                                              
+  sigla         String  // "JOI"
+  situacao      String  // PENDENTE, ENTREGUE, CANCELADO
+  tipoDocumento String  // NORMAL, CORTESIA, SUBCONTRATO
+
+  // Datas operacionais
+  dataEmissao   DateTime
+  prevEntrega   DateTime?
+  sitLiquidacao String?
+  dataLiquidacao DateTime?
+
+  // Remetente
+  remetenteNome   String
+  remetenteCnpj   String
+  remetenteCidade String
+  remetenteUf     String
+
+  // Destinatário
+  destinatarioNome   String
+  destinatarioCnpj   String
+  destinatarioCidade String
+  destinatarioUf     String
+
+  // Pagador — vem do CTRC, Lancamento tem o seu próprio vindo dos caixa
+  pagadorNome String
+  pagadorCnpj String
+  resultadoComercial Decimal?
+  grupoCnpj String?
+
+  // Logística
+  cidadeDestino  String
+  ufDestino      String
+  pesoReal       Float
+  kgCalculo      Float
+  cubagem        Float
+  qtdeVolumes    Int
+  tipoFrete      String   // CIF, FOB
+  tipoMercadoria String?
+  veiculoColeta  String?
+  veiculoEntrega String?
+  tabelaCalculo  String?
+  nroManifesto   String?
+  unidEmit       String
+
+  // Financeiro do CTRC (componentes do frete)
+  valorMercadoria Float
+  valorFrete      Float
+  valorLiquido    Float
+  vlrLiquidado    Float
+  vlrGris         Float?
+  vlrPedagio      Float?
+  vlrIcms         Float?
+
+  // Vendedor
+  vendedorId   Int?
+  vendedor     Vendedor? @relation(fields: [vendedorId], references: [id])
+
+  ocorrencias Ocorrencia[]
+  lancamentos Lancamento[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([sigla, numero])
+  @@index([situacao])
+  @@index([dataEmissao])
+  @@index([pagadorCnpj])
+}
+
+model Motorista {                                                                                  
+  id    Int    @id @default(autoincrement())
+  cpf   String @unique                                                                             
+  nome  String? 
+
+  veiculos Veiculo[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Vendedor {
+  id     Int    @id @default(autoincrement())
+  codigo Int?   @unique  // cod_vendedor do CTRC
+  nome   String          // nome_vendedor / vendedor nos caixa
+
+  ctrcs Ctrc[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Ocorrencia {
+  id        Int      @id @default(autoincrement())
+  ctrcId    Int
+  ctrc      Ctrc     @relation(fields: [ctrcId], references: [id])
+  codigo    String
+  descricao String
+  local     String
+  dataHora  DateTime
+  @@index([ctrcId])
+}
+
+model Lancamento {
+  id            Int            @id @default(autoincrement())
+  tipo          TipoLancamento
+
+  // Comuns
+  referencia    String         // numero do CTRC ou da Fatura
+  emissao       DateTime
+  pagadorCnpj   String
+  pagadorNome   String
+  pagadorCidade String?
+  pagadorUf     String?
+  vendedor      String?
+  unidResp      String?
+  valor         Float
+  tipoCobranca  String?        // CARTEIRA, BANCO
+  vencimento    DateTime?
+  diasAtraso    Int?
+
+  // Específicos — nulos quando não se aplica
+  saldo         Float?         // 240: quanto ainda deve
+  banco         String?        // 240: banco da cobrança
+  tipoFrete     String?        // 044/201: CIF, FOB
+  tipoDocumento String?        // 201: NORMAL, CORTESIA
+  localizacao   String?        // 044/201: onde está a carga agora
+  dataLiquidacao DateTime?
+  vlrPago        Float?
+
+  // 202 exclusivos
+  vencimentoOriginal DateTime?
+  dataCancelamento   DateTime?
+  dataPromessa       DateTime?
+  dataCreditoCaixa   DateTime?
+  vlrCtrcs           Float?
+  vlrDebito          Float?
+  vlrCredito         Float?
+  vlrJuros           Float?
+  vlrMulta           Float?
+  vlrDesconto        Float?
+  liquidada          Boolean?
+  protestada         Boolean?
+  prorrogada         Boolean?
+  tipoBaixa          String?
+
+  ctrcId    Int?
+  ctrc      Ctrc? @relation(fields: [ctrcId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tipo])
+  @@index([pagadorCnpj])
+  @@index([emissao])
+  @@index([vencimento])
+}
+
+enum TipoLancamento {
+  FRETE_VISTA_NAO_LIQUIDADO  // caixa_044
+  DISPONIVEL_FATURAR         // caixa_201
+  FATURA_VENCIDA             // caixa_240
+  RELATORIO_FATURA           // caixa_202
+}
+
+model User {
+  id                 String    @id @default(cuid())
+  name               String?
+  email              String    @unique
+  passwordHash       String
+  role               Role      @default(VIEWER)
+  funcao             String    @default("Visualizador")
+  allowedDashboards  String[]  @default([])
+  image              String?
+  createdAt          DateTime  @default(now())
+  lastLoginAt        DateTime?
+  mustChangePassword Boolean   @default(false)
+
+  kpiSlots           UserKpi[]
+}
+
+// Slots de KPI da home por usuário — configurados pelo admin
+// O colega do CRUD usa esta tabela para persistir qual KPI aparece em cada posição (1-4)
+model UserKpi {
+  userId   String
+  kpiId    String   // valor de KPI_IDS, ex: "KPI_001"
+  position Int      // 1, 2, 3 ou 4 (slot no card row)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, kpiId])
+  @@unique([userId, position])  // cada posição só pode ter 1 KPI por usuário
+}
+
+// Registro de importações de CSVs — base para série histórica
+model SnapshotImport {
+  id            Int      @id @default(autoincrement())
+  referenceDate String   // "2026-04" (YYYY-MM)
+  filename      String   // "caixa_240.csv"
+  importedAt    DateTime @default(now())
+  rowCount      Int
+  status        String   // "SUCCESS" | "ERROR"
+  errorMessage  String?
+
+  @@unique([referenceDate, filename])
+  @@index([referenceDate])
+}
+
+enum Role {
+  ADMIN
+  MANAGER
+  ANALYST
+  OPERATOR
+  VIEWER
+}

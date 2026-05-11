@@ -7,9 +7,10 @@ import InputField from "./InputField";
 interface LoginCardProps {
   onSubmit: (username: string, password: string, remember: boolean) => void;
   loading?: boolean;
+  error?: string;
 }
 
-export default function LoginCard({ onSubmit, loading }: LoginCardProps) {
+export default function LoginCard({ onSubmit, loading, error }: LoginCardProps) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [remember, setRemember] = useState(false);
@@ -69,6 +70,14 @@ export default function LoginCard({ onSubmit, loading }: LoginCardProps) {
             <span className="text-sm text-slate-400">Lembrar-me</span>
           </label>
         </div>
+
+        {/* Error */}
+        {error && (
+          <div className="flex items-center gap-2 px-4 py-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-sm">
+            <span>⚠</span>
+            <span>{error}</span>
+          </div>
+        )}
 
         {/* Submit Button */}
         <button
