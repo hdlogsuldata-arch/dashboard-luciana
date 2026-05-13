@@ -1,11 +1,10 @@
 import AppShell from "@/components/ui/AppShell";
+import MetasManagement from "@/components/admin/MetasManagement";
 
-export default function DashboardPage() {
+export default function MetasPage() {
   return (
     <AppShell>
-      <div className="flex items-center justify-center h-full text-slate-500 text-sm">
-        Selecione um dashboard na barra lateral.
-      </div>
+      <MetasManagement />
     </AppShell>
   );
 }

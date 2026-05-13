@@ -219,6 +219,7 @@ model User {
   mustChangePassword Boolean   @default(false)
 
   kpiSlots           UserKpi[]
+  graphCharts        UserChart[]
 }
 
 // Slots de KPI da home por usuário — configurados pelo admin
@@ -232,6 +233,14 @@ model UserKpi {
   @@id([userId, kpiId])
   @@unique([userId, position])  // cada posição só pode ter 1 KPI por usuário
 }
+
+model UserChart {
+  userId  String
+  chartId String
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@id([userId, chartId])
+}
+
 
 // Registro de importações de CSVs — base para série histórica
 model SnapshotImport {
