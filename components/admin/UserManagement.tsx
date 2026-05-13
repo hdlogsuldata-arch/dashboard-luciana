@@ -237,6 +237,14 @@ export default function UserManagement() {
     </svg>
   );
 
+  const IconCharts = () => (
+    <svg width="14" height="14" viewBox="0 0 20 20" fill="none">
+      <rect x="2" y="10" width="3" height="8" rx="1" stroke="currentColor" strokeWidth="1.5" />
+      <rect x="8" y="6" width="3" height="12" rx="1" stroke="currentColor" strokeWidth="1.5" />
+      <rect x="14" y="2" width="3" height="16" rx="1" stroke="currentColor" strokeWidth="1.5" />
+    </svg>
+  );
+
   const IconUsers = () => (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
       <circle cx="9" cy="8" r="4" stroke="currentColor" strokeWidth="1.5" />
@@ -445,7 +453,7 @@ export default function UserManagement() {
               background: "rgba(31,28,48,0.5)",
               borderBottom: `1px solid ${C.border}`,
               display: "grid",
-              gridTemplateColumns: "1fr 1fr 1fr 160px 100px",
+              gridTemplateColumns: "1fr 1fr 1fr 160px 136px",
               padding: "0 20px",
             }}
           >
@@ -508,7 +516,7 @@ export default function UserManagement() {
                   className="usr-row"
                   style={{
                     display: "grid",
-                    gridTemplateColumns: "1fr 1fr 1fr 160px 100px",
+                    gridTemplateColumns: "1fr 1fr 1fr 160px 136px",
                     padding: "0 20px",
                     borderBottom:
                       idx < filtered.length - 1
@@ -628,6 +636,35 @@ export default function UserManagement() {
                       gap: 4,
                     }}
                   >
+                    <a
+                      href={`/admin/usuarios/${u.id}/graficos`}
+                      title="Configurar gráficos e KPIs"
+                      className="act-btn"
+                      style={{
+                        width: 30,
+                        height: 30,
+                        borderRadius: 6,
+                        background: "transparent",
+                        border: `1px solid ${C.border}`,
+                        color: C.textSec,
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        textDecoration: "none",
+                        transition: "all 0.15s",
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.borderColor = "rgba(243,222,61,0.5)";
+                        e.currentTarget.style.color = C.yellow;
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor = C.border;
+                        e.currentTarget.style.color = C.textSec;
+                      }}
+                    >
+                      <IconCharts />
+                    </a>
                     <button
                       className="act-btn"
                       onClick={() => handleEdit(u)}

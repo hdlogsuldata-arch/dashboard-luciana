@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import AppShell from "@/components/ui/AppShell";
 import ChartCard from "@/components/charts/ChartCard";
 import ChartErrorBoundary from "@/components/charts/ChartErrorBoundary";
-import KpiCard from "@/components/charts/KpiCard";
+import KpiStrip from "@/components/charts/KpiStrip";
 import GlobalFilterBar from "@/components/dashboard/GlobalFilterBar";
 import { CHART_REGISTRY } from "@/lib/charts/registry";
 import type { ChartCompareDatum } from "@/lib/chartTypes";
@@ -15,16 +15,20 @@ type ApiData = {
   charts: Record<string, ChartCompareDatum[]>;
 };
 
-const FIN_CHART_IDS = [
-  "FIN_001", "FIN_002", "FIN_003", "FIN_004", "FIN_005",
-  "FIN_006", "FIN_007", "FIN_008", "FIN_009", "FIN_010",
-  "FIN_011", "FIN_012", "FIN_013",
-] as const;
+type SectionConfig = { chartIds: string[]; kpiIds: string[] };
 
 export default function FinanceiroPage() {
   const { ref } = useDashboardFilter();
+  const [config, setConfig] = useState<SectionConfig | null>(null);
   const [data, setData] = useState<ApiData | null>(null);
   const [error, setError] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/me/section-config?section=financeiro")
+      .then((r) => r.json())
+      .then(setConfig)
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     setData(null);
@@ -51,12 +55,12 @@ export default function FinanceiroPage() {
           <GlobalFilterBar />
         </div>
 
-        {/* KPI strip */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
-          <KpiCard kpiId="KPI_001" value={data?.kpis?.KPI_001 ?? null} />
-          <KpiCard kpiId="KPI_002" value={data?.kpis?.KPI_002 ?? null} />
-          <KpiCard kpiId="KPI_005" value={data?.kpis?.KPI_005 ?? null} />
-        </div>
+        <KpiStrip
+          items={(config?.kpiIds ?? []).map((kpiId) => ({
+            kpiId,
+            value: data?.kpis?.[kpiId] ?? null,
+          }))}
+        />
 
         {error && (
           <p style={{ color: "#EF4444", fontSize: 14 }}>
@@ -64,9 +68,8 @@ export default function FinanceiroPage() {
           </p>
         )}
 
-        {/* Charts grid */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 20 }}>
-          {FIN_CHART_IDS.map((id) => {
+          {(config?.chartIds ?? []).map((id) => {
             const meta = CHART_REGISTRY.find((c) => c.id === id);
             if (!meta) return null;
             return (

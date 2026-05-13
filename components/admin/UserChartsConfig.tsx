@@ -1,20 +1,10 @@
 "use client";
 
-import React, {
-  useState,
-  useRef,
-  useCallback,
-  useMemo,
-  useEffect,
-} from "react";
-import {
-  CHART_REGISTRY,
-  KPI_REGISTRY,
-  DEFAULT_KPI_SLOTS,
-} from "@/lib/charts/registry";
+import React, { useState, useRef, useCallback, useEffect } from "react";
+import { CHART_REGISTRY, KPI_REGISTRY } from "@/lib/charts/registry";
 import Toast, { type ToastItem } from "./Toast";
 
-// ── Color palette (same as UserManagement) ─────────────────────────────────
+// ── Color palette ───────────────────────────────────────────────────────────
 
 const C = {
   bg:        "rgb(20,18,32)",
@@ -27,27 +17,32 @@ const C = {
   brand:     "rgb(30,20,97)",
 };
 
-// ── Constants ──────────────────────────────────────────────────────────────
+// ── Types ───────────────────────────────────────────────────────────────────
 
-const CHART_SECTIONS = [
-  { key: "financeiro"  as const, label: "Financeiro"  },
-  { key: "operacional" as const, label: "Operacional" },
-  { key: "frota"       as const, label: "Frota"       },
-];
+type SectionKey = "financeiro" | "operacional" | "frota";
 
-// TODO: Replace MOCK_USER with:
-//   const params = useParams();
-//   const [user, setUser] = useState<UserInfo | null>(null);
-//   useEffect(() => {
-//     apiFetch(`/api/admin/usuarios/${params.id}`).then(d => setUser(d.user));
-//   }, [params.id]);
-const MOCK_USER = {
-  id:    "usr_mock_001",
-  name:  "Fernanda Oliveira",
-  email: "fernanda.oliveira@hdlog.com.br",
+type SectionConfig = {
+  charts: Set<string>;
+  kpiIds: string[];
 };
 
-// ── Helpers ────────────────────────────────────────────────────────────────
+type Config = Record<SectionKey, SectionConfig>;
+
+type UserInfo = {
+  id: string;
+  name: string | null;
+  email: string;
+  role: string;
+  funcao: string;
+};
+
+// ── Constants ───────────────────────────────────────────────────────────────
+
+const SECTIONS: { key: SectionKey; label: string }[] = [
+  { key: "financeiro",  label: "Financeiro"  },
+  { key: "operacional", label: "Operacional" },
+  { key: "frota",       label: "Frota"       },
+];
 
 function fmtKpi(format: string): string {
   switch (format) {
@@ -55,224 +50,19 @@ function fmtKpi(format: string): string {
     case "pct":  return "%";
     case "int":  return "qtd";
     case "days": return "dias";
-    case "m3":   return "m³";
-    case "km":   return "km";
     default:     return format;
   }
 }
 
-// ── KPI Slot card with custom dropdown ────────────────────────────────────
+// ── Main component ──────────────────────────────────────────────────────────
 
-function KpiSlotCard({
-  position,
-  kpiId,
-  isDuplicate,
-  onChange,
-}: {
-  position: 1 | 2 | 3 | 4;
-  kpiId: string;
-  isDuplicate: boolean;
-  onChange: (kpiId: string) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const selected = KPI_REGISTRY.find((k) => k.id === kpiId);
-
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [open]);
-
-  return (
-    <div
-      ref={containerRef}
-      style={{
-        flex: 1,
-        minWidth: 190,
-        background: isDuplicate ? "rgba(239,68,68,0.06)" : C.panel,
-        border: `1px solid ${isDuplicate ? "rgba(239,68,68,0.4)" : C.border}`,
-        borderRadius: 10,
-        padding: 16,
-        position: "relative",
-        transition: "border-color 0.15s",
-      }}
-    >
-      {/* Slot label */}
-      <div
-        style={{
-          fontSize: 11,
-          fontWeight: 700,
-          color: C.textMuted,
-          letterSpacing: "0.6px",
-          textTransform: "uppercase",
-          marginBottom: 10,
-        }}
-      >
-        Slot {position}
-      </div>
-
-      {/* Trigger */}
-      <div
-        onClick={() => setOpen((o) => !o)}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-          padding: "8px 10px",
-          background: C.bg,
-          border: `1px solid ${open ? "rgba(243,222,61,0.4)" : C.border}`,
-          borderRadius: 6,
-          cursor: "pointer",
-          minHeight: 36,
-          userSelect: "none",
-          transition: "border-color 0.15s",
-        }}
-      >
-        {selected && (
-          <span
-            style={{
-              display: "inline-block",
-              width: 9,
-              height: 9,
-              borderRadius: "50%",
-              background: selected.accentColor,
-              flexShrink: 0,
-            }}
-          />
-        )}
-        <span style={{ flex: 1, fontSize: 12, color: C.white, minWidth: 0 }}>
-          {selected?.title ?? "—"}
-        </span>
-        {selected && (
-          <span
-            style={{
-              fontSize: 10,
-              color: C.textMuted,
-              background: "rgba(255,255,255,0.06)",
-              padding: "1px 5px",
-              borderRadius: 3,
-              flexShrink: 0,
-            }}
-          >
-            {fmtKpi(selected.format)}
-          </span>
-        )}
-        <span style={{ fontSize: 9, color: C.textMuted, flexShrink: 0, marginLeft: 2 }}>
-          {open ? "▲" : "▼"}
-        </span>
-      </div>
-
-      {/* Dropdown */}
-      {open && (
-        <div
-          style={{
-            position: "absolute",
-            top: "calc(100% - 8px)",
-            left: 16,
-            right: 16,
-            background: "rgb(31,28,48)",
-            border: `1px solid ${C.border}`,
-            borderRadius: 8,
-            zIndex: 300,
-            boxShadow: "0 8px 28px rgba(0,0,0,0.55)",
-            overflow: "hidden",
-          }}
-        >
-          {KPI_REGISTRY.map((kpi) => (
-            <div
-              key={kpi.id}
-              onClick={() => { onChange(kpi.id); setOpen(false); }}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-                padding: "9px 12px",
-                cursor: "pointer",
-                background: kpi.id === kpiId ? "rgba(255,255,255,0.07)" : "transparent",
-                transition: "background 0.1s",
-              }}
-              onMouseEnter={(e) => {
-                if (kpi.id !== kpiId)
-                  e.currentTarget.style.background = "rgba(255,255,255,0.04)";
-              }}
-              onMouseLeave={(e) => {
-                if (kpi.id !== kpiId)
-                  e.currentTarget.style.background = "transparent";
-              }}
-            >
-              {/* Colored pill */}
-              <span
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 4,
-                  padding: "1px 7px",
-                  borderRadius: 999,
-                  background: `${kpi.accentColor}22`,
-                  border: `1px solid ${kpi.accentColor}55`,
-                  flexShrink: 0,
-                }}
-              >
-                <span
-                  style={{
-                    display: "inline-block",
-                    width: 7,
-                    height: 7,
-                    borderRadius: "50%",
-                    background: kpi.accentColor,
-                  }}
-                />
-                <span style={{ fontSize: 10, color: kpi.accentColor, fontWeight: 700 }}>
-                  {fmtKpi(kpi.format)}
-                </span>
-              </span>
-              <span style={{ flex: 1, fontSize: 12, color: C.white }}>{kpi.title}</span>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Duplicate warning */}
-      {isDuplicate && (
-        <div
-          style={{
-            marginTop: 8,
-            fontSize: 11,
-            color: "rgb(252,165,165)",
-            display: "flex",
-            alignItems: "center",
-            gap: 4,
-          }}
-        >
-          <span>⚠</span> KPI duplicado entre slots
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── Main component ─────────────────────────────────────────────────────────
-
-export default function UserChartsConfig() {
+export default function UserChartsConfig({ userId }: { userId: string }) {
   const [activeTab, setActiveTab] = useState<"graficos" | "kpis">("graficos");
-
-  // TODO: Replace with fetch /api/admin/usuarios/${id}/charts-config
-  const [selectedCharts, setSelectedCharts] = useState<Set<string>>(
-    () => new Set(CHART_REGISTRY.map((c) => c.id))
-  );
-
-  // TODO: Replace with fetch /api/admin/usuarios/${id}/kpi-config
-  const [kpiSlots, setKpiSlots] = useState<
-    Array<{ position: 1 | 2 | 3 | 4; kpiId: string }>
-  >(() => DEFAULT_KPI_SLOTS.map((s) => ({ position: s.position, kpiId: s.kpiId as string })));
-
-  const [toasts, setToasts] = useState<ToastItem[]>([]);
+  const [user, setUser]           = useState<UserInfo | null>(null);
+  const [config, setConfig]       = useState<Config | null>(null);
+  const [loading, setLoading]     = useState(true);
+  const [saving, setSaving]       = useState(false);
+  const [toasts, setToasts]       = useState<ToastItem[]>([]);
   const nextToastId = useRef(1);
 
   const toast = useCallback((msg: string, type: "success" | "error" = "success") => {
@@ -281,59 +71,97 @@ export default function UserChartsConfig() {
     setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 3000);
   }, []);
 
-  // TODO: Replace with:
-  //   await apiFetch(`/api/admin/usuarios/${MOCK_USER.id}/charts-config`, {
-  //     method: "PUT",
-  //     body: JSON.stringify({ selectedCharts: [...selectedCharts], kpiSlots }),
-  //   });
-  const handleSave = useCallback(() => {
-    toast("Configurações salvas com sucesso!");
-  }, [toast]);
+  // ── Load ──────────────────────────────────────────────────────────────────
 
-  const toggleChart = useCallback((id: string) => {
-    setSelectedCharts((prev) => {
-      const next = new Set(prev);
+  useEffect(() => {
+    Promise.all([
+      fetch(`/api/usuarios/${userId}`).then((r) => r.json()),
+      fetch(`/api/usuarios/${userId}/charts-kpis_config?section=financeiro`).then((r) => r.json()),
+      fetch(`/api/usuarios/${userId}/charts-kpis_config?section=operacional`).then((r) => r.json()),
+      fetch(`/api/usuarios/${userId}/charts-kpis_config?section=frota`).then((r) => r.json()),
+    ])
+      .then(([userRes, fin, opr, flt]) => {
+        if (userRes.error) throw new Error(userRes.error);
+        setUser(userRes.user);
+        setConfig({
+          financeiro:  { charts: new Set(fin.chartIds  ?? []), kpiIds: fin.kpiIds  ?? [] },
+          operacional: { charts: new Set(opr.chartIds  ?? []), kpiIds: opr.kpiIds  ?? [] },
+          frota:       { charts: new Set(flt.chartIds  ?? []), kpiIds: flt.kpiIds  ?? [] },
+        });
+      })
+      .catch(() => toast("Erro ao carregar configurações", "error"))
+      .finally(() => setLoading(false));
+  }, [userId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Save ──────────────────────────────────────────────────────────────────
+
+  const handleSave = useCallback(async () => {
+    if (!config) return;
+    setSaving(true);
+    try {
+      await Promise.all(
+        SECTIONS.map(({ key }) =>
+          fetch(`/api/usuarios/${userId}/charts-kpis_config`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              section:        key,
+              selectedCharts: [...config[key].charts],
+              kpiIds:         config[key].kpiIds,
+            }),
+          }).then((r) => { if (!r.ok) throw new Error(); })
+        )
+      );
+      toast("Configurações salvas com sucesso!");
+    } catch {
+      toast("Erro ao salvar configurações", "error");
+    } finally {
+      setSaving(false);
+    }
+  }, [config, userId]);
+
+  // ── Chart toggles ─────────────────────────────────────────────────────────
+
+  const toggleChart = useCallback((section: SectionKey, id: string) => {
+    setConfig((prev) => {
+      if (!prev) return prev;
+      const next = new Set(prev[section].charts);
       if (next.has(id)) next.delete(id); else next.add(id);
-      return next;
+      return { ...prev, [section]: { ...prev[section], charts: next } };
     });
   }, []);
 
-  const selectAll = useCallback((section: string) => {
-    setSelectedCharts((prev) => {
-      const next = new Set(prev);
-      CHART_REGISTRY.filter((c) => c.section === section).forEach((c) => next.add(c.id));
-      return next;
+  const selectAllCharts = useCallback((section: SectionKey) => {
+    setConfig((prev) => {
+      if (!prev) return prev;
+      const all = new Set(CHART_REGISTRY.filter((c) => c.section === section).map((c) => c.id));
+      return { ...prev, [section]: { ...prev[section], charts: all } };
     });
   }, []);
 
-  const selectNone = useCallback((section: string) => {
-    setSelectedCharts((prev) => {
-      const next = new Set(prev);
-      CHART_REGISTRY.filter((c) => c.section === section).forEach((c) => next.delete(c.id));
-      return next;
+  const selectNoneCharts = useCallback((section: SectionKey) => {
+    setConfig((prev) => {
+      if (!prev) return prev;
+      return { ...prev, [section]: { ...prev[section], charts: new Set<string>() } };
     });
   }, []);
 
-  const setSlotKpi = useCallback((position: 1 | 2 | 3 | 4, kpiId: string) => {
-    setKpiSlots((prev) =>
-      prev.map((s) => (s.position === position ? { ...s, kpiId } : s))
-    );
+  // ── KPI toggles ───────────────────────────────────────────────────────────
+
+  const toggleKpi = useCallback((section: SectionKey, kpiId: string) => {
+    setConfig((prev) => {
+      if (!prev) return prev;
+      const current = prev[section].kpiIds;
+      const kpiIds = current.includes(kpiId)
+        ? current.filter((id) => id !== kpiId)
+        : [...current, kpiId];
+      return { ...prev, [section]: { ...prev[section], kpiIds } };
+    });
   }, []);
 
-  const duplicatePositions = useMemo(() => {
-    const countMap = new Map<string, number[]>();
-    kpiSlots.forEach((s) => {
-      if (!countMap.has(s.kpiId)) countMap.set(s.kpiId, []);
-      countMap.get(s.kpiId)!.push(s.position);
-    });
-    const result = new Set<number>();
-    countMap.forEach((positions) => {
-      if (positions.length > 1) positions.forEach((p) => result.add(p));
-    });
-    return result;
-  }, [kpiSlots]);
+  // ── Render helpers ────────────────────────────────────────────────────────
 
-  const userInitials = MOCK_USER.name
+  const userInitials = (user?.name ?? user?.email ?? "?")
     .split(" ")
     .map((n) => n[0])
     .slice(0, 2)
@@ -353,12 +181,13 @@ export default function UserChartsConfig() {
     >
       <style>{`
         @keyframes slideIn { from { opacity:0; transform:translateX(20px); } to { opacity:1; transform:translateX(0); } }
+        @keyframes pulse { 0%,100%{opacity:.4} 50%{opacity:.7} }
         .chart-row:hover { background: rgba(255,255,255,0.025) !important; }
         .chart-row label { display:flex; align-items:center; gap:12px; padding:10px 16px; cursor:pointer; width:100%; box-sizing:border-box; }
         input[type="checkbox"] { accent-color: rgb(243,222,61); cursor:pointer; }
       `}</style>
 
-      {/* ── Sticky header ── */}
+      {/* ── Sticky header ─────────────────────────────────────────────────── */}
       <header
         style={{
           height: 65,
@@ -374,7 +203,6 @@ export default function UserChartsConfig() {
           zIndex: 100,
         }}
       >
-        {/* Left: back + user info */}
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
           <a
             href="/admin/usuarios"
@@ -390,16 +218,7 @@ export default function UserChartsConfig() {
               fontSize: 12,
               fontWeight: 600,
               textDecoration: "none",
-              transition: "all 0.15s",
               whiteSpace: "nowrap",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.borderColor = "rgba(255,255,255,0.25)";
-              e.currentTarget.style.color = C.white;
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.borderColor = C.border;
-              e.currentTarget.style.color = C.textSec;
             }}
           >
             ← Usuários
@@ -407,39 +226,51 @@ export default function UserChartsConfig() {
 
           <div style={{ width: 1, height: 24, background: C.border }} />
 
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          {loading ? (
             <div
               style={{
-                width: 34,
+                width: 180,
                 height: 34,
-                borderRadius: "50%",
-                flexShrink: 0,
-                background: "rgba(30,20,97,0.25)",
-                border: "1.5px solid rgba(30,20,97,0.4)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: 12,
-                fontWeight: 700,
-                color: "rgb(180,170,255)",
+                borderRadius: 6,
+                background: "rgba(62,57,96,0.4)",
+                animation: "pulse 1.5s ease-in-out infinite",
               }}
-            >
-              {userInitials}
-            </div>
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: C.white, lineHeight: 1.2 }}>
-                {MOCK_USER.name}
+            />
+          ) : (
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div
+                style={{
+                  width: 34,
+                  height: 34,
+                  borderRadius: "50%",
+                  flexShrink: 0,
+                  background: "rgba(30,20,97,0.25)",
+                  border: "1.5px solid rgba(30,20,97,0.4)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: 12,
+                  fontWeight: 700,
+                  color: "rgb(180,170,255)",
+                }}
+              >
+                {userInitials}
               </div>
-              <div style={{ fontSize: 11, color: C.textMuted, marginTop: 1 }}>
-                {MOCK_USER.email}
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: C.white, lineHeight: 1.2 }}>
+                  {user?.name ?? user?.email}
+                </div>
+                <div style={{ fontSize: 11, color: C.textMuted, marginTop: 1 }}>
+                  {user?.email}
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
 
-        {/* Right: save button */}
         <button
           onClick={handleSave}
+          disabled={loading || saving}
           style={{
             display: "flex",
             alignItems: "center",
@@ -451,19 +282,18 @@ export default function UserChartsConfig() {
             color: C.brand,
             fontSize: 14,
             fontWeight: 700,
-            cursor: "pointer",
+            cursor: loading || saving ? "not-allowed" : "pointer",
             fontFamily: "inherit",
+            opacity: loading || saving ? 0.6 : 1,
             boxShadow: "0 4px 14px rgba(243,222,61,0.2)",
             transition: "opacity 0.15s",
           }}
-          onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.9")}
-          onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
         >
-          Salvar configurações
+          {saving ? "Salvando…" : "Salvar configurações"}
         </button>
       </header>
 
-      {/* ── Main ── */}
+      {/* ── Main ──────────────────────────────────────────────────────────── */}
       <main
         style={{
           flex: 1,
@@ -473,21 +303,12 @@ export default function UserChartsConfig() {
           margin: "0 auto",
         }}
       >
-        {/* Page title */}
         <div style={{ marginBottom: 28 }}>
-          <h1
-            style={{
-              fontSize: 24,
-              fontWeight: 700,
-              color: C.white,
-              letterSpacing: "-0.4px",
-              margin: "0 0 6px",
-            }}
-          >
+          <h1 style={{ fontSize: 24, fontWeight: 700, color: C.white, letterSpacing: "-0.4px", margin: "0 0 6px" }}>
             Configuração de Visualização
           </h1>
           <p style={{ fontSize: 14, color: C.textSec, margin: 0 }}>
-            Selecione os gráficos e KPIs disponíveis para este usuário no dashboard.
+            Selecione os gráficos e KPIs disponíveis para este usuário em cada seção do dashboard.
           </p>
         </div>
 
@@ -526,12 +347,30 @@ export default function UserChartsConfig() {
           ))}
         </div>
 
-        {/* ── Gráficos tab ── */}
-        {activeTab === "graficos" && (
+        {/* ── Loading skeleton ── */}
+        {loading && (
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            {CHART_SECTIONS.map(({ key, label }) => {
+            {[0, 1, 2].map((i) => (
+              <div
+                key={i}
+                style={{
+                  height: 120,
+                  borderRadius: 12,
+                  background: "rgba(62,57,96,0.3)",
+                  animation: "pulse 1.5s ease-in-out infinite",
+                  animationDelay: `${i * 0.15}s`,
+                }}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* ── Gráficos tab ── */}
+        {!loading && activeTab === "graficos" && config && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            {SECTIONS.map(({ key, label }) => {
               const charts = CHART_REGISTRY.filter((c) => c.section === key);
-              const selectedCount = charts.filter((c) => selectedCharts.has(c.id)).length;
+              const selectedCount = charts.filter((c) => config[key].charts.has(c.id)).length;
 
               return (
                 <div
@@ -543,7 +382,6 @@ export default function UserChartsConfig() {
                     overflow: "hidden",
                   }}
                 >
-                  {/* Section header */}
                   <div
                     style={{
                       background: "rgba(31,28,48,0.5)",
@@ -554,35 +392,24 @@ export default function UserChartsConfig() {
                       gap: 10,
                     }}
                   >
-                    <span
-                      style={{ fontSize: 13, fontWeight: 700, color: C.white }}
-                    >
-                      {label}
-                    </span>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: C.white }}>{label}</span>
 
-                    {/* Selected count badge */}
                     <span
                       style={{
                         padding: "2px 8px",
                         borderRadius: 999,
                         background:
-                          selectedCount === charts.length
-                            ? "rgba(16,185,129,0.12)"
-                            : selectedCount === 0
-                            ? "rgba(239,68,68,0.1)"
-                            : "rgba(243,222,61,0.1)",
+                          selectedCount === charts.length ? "rgba(16,185,129,0.12)"
+                          : selectedCount === 0           ? "rgba(239,68,68,0.1)"
+                          :                                 "rgba(243,222,61,0.1)",
                         color:
-                          selectedCount === charts.length
-                            ? "rgb(110,231,183)"
-                            : selectedCount === 0
-                            ? "rgb(252,165,165)"
-                            : "rgb(253,224,71)",
+                          selectedCount === charts.length ? "rgb(110,231,183)"
+                          : selectedCount === 0           ? "rgb(252,165,165)"
+                          :                                 "rgb(253,224,71)",
                         border: `1px solid ${
-                          selectedCount === charts.length
-                            ? "rgba(16,185,129,0.25)"
-                            : selectedCount === 0
-                            ? "rgba(239,68,68,0.2)"
-                            : "rgba(243,222,61,0.2)"
+                          selectedCount === charts.length ? "rgba(16,185,129,0.25)"
+                          : selectedCount === 0           ? "rgba(239,68,68,0.2)"
+                          :                                 "rgba(243,222,61,0.2)"
                         }`,
                         fontSize: 11,
                         fontWeight: 700,
@@ -593,13 +420,10 @@ export default function UserChartsConfig() {
 
                     <div style={{ flex: 1 }} />
 
-                    {/* Todos / Nenhum */}
                     {(["Todos", "Nenhum"] as const).map((action) => (
                       <button
                         key={action}
-                        onClick={() =>
-                          action === "Todos" ? selectAll(key) : selectNone(key)
-                        }
+                        onClick={() => action === "Todos" ? selectAllCharts(key) : selectNoneCharts(key)}
                         style={{
                           padding: "4px 10px",
                           borderRadius: 5,
@@ -610,15 +434,6 @@ export default function UserChartsConfig() {
                           fontWeight: 700,
                           cursor: "pointer",
                           fontFamily: "inherit",
-                          transition: "all 0.15s",
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.borderColor = "rgba(243,222,61,0.4)";
-                          e.currentTarget.style.color = C.yellow;
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.borderColor = C.border;
-                          e.currentTarget.style.color = C.textSec;
                         }}
                       >
                         {action}
@@ -626,24 +441,20 @@ export default function UserChartsConfig() {
                     ))}
                   </div>
 
-                  {/* Chart rows */}
                   {charts.map((chart, idx) => (
                     <div
                       key={chart.id}
                       className="chart-row"
                       style={{
-                        borderBottom:
-                          idx < charts.length - 1
-                            ? `1px solid rgba(62,57,96,0.4)`
-                            : "none",
+                        borderBottom: idx < charts.length - 1 ? `1px solid rgba(62,57,96,0.4)` : "none",
                         transition: "background 0.1s",
                       }}
                     >
                       <label>
                         <input
                           type="checkbox"
-                          checked={selectedCharts.has(chart.id)}
-                          onChange={() => toggleChart(chart.id)}
+                          checked={config[key].charts.has(chart.id)}
+                          onChange={() => toggleChart(key, chart.id)}
                           style={{ width: 15, height: 15, flexShrink: 0 }}
                         />
                         <span
@@ -680,33 +491,139 @@ export default function UserChartsConfig() {
         )}
 
         {/* ── KPIs tab ── */}
-        {activeTab === "kpis" && (
-          <div>
-            <p style={{ fontSize: 13, color: C.textSec, margin: "0 0 20px" }}>
-              Escolha os 4 KPIs que aparecem na parte superior do dashboard para este usuário.
-              KPIs repetidos entre slots são destacados em vermelho.
+        {!loading && activeTab === "kpis" && config && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            <p style={{ fontSize: 13, color: C.textSec, margin: "0 0 4px" }}>
+              Escolha quais KPIs aparecem no topo de cada seção do dashboard para este usuário.
             </p>
 
-            <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
-              {([1, 2, 3, 4] as const).map((pos) => {
-                const slot = kpiSlots.find((s) => s.position === pos);
-                if (!slot) return null;
-                return (
-                  <KpiSlotCard
-                    key={pos}
-                    position={pos}
-                    kpiId={slot.kpiId}
-                    isDuplicate={duplicatePositions.has(pos)}
-                    onChange={(kpiId) => setSlotKpi(pos, kpiId)}
-                  />
-                );
-              })}
-            </div>
+            {SECTIONS.map(({ key, label }) => {
+              const kpis = KPI_REGISTRY.filter((k) => k.section === key);
+              const selectedCount = kpis.filter((k) => config[key].kpiIds.includes(k.id)).length;
+
+              return (
+                <div
+                  key={key}
+                  style={{
+                    background: C.bg,
+                    border: `1px solid ${C.border}`,
+                    borderRadius: 12,
+                    overflow: "hidden",
+                  }}
+                >
+                  <div
+                    style={{
+                      background: "rgba(31,28,48,0.5)",
+                      borderBottom: `1px solid ${C.border}`,
+                      padding: "12px 20px",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 10,
+                    }}
+                  >
+                    <span style={{ fontSize: 13, fontWeight: 700, color: C.white }}>{label}</span>
+                    <span
+                      style={{
+                        padding: "2px 8px",
+                        borderRadius: 999,
+                        background:
+                          selectedCount === kpis.length ? "rgba(16,185,129,0.12)"
+                          : selectedCount === 0         ? "rgba(239,68,68,0.1)"
+                          :                               "rgba(243,222,61,0.1)",
+                        color:
+                          selectedCount === kpis.length ? "rgb(110,231,183)"
+                          : selectedCount === 0         ? "rgb(252,165,165)"
+                          :                               "rgb(253,224,71)",
+                        border: `1px solid ${
+                          selectedCount === kpis.length ? "rgba(16,185,129,0.25)"
+                          : selectedCount === 0         ? "rgba(239,68,68,0.2)"
+                          :                               "rgba(243,222,61,0.2)"
+                        }`,
+                        fontSize: 11,
+                        fontWeight: 700,
+                      }}
+                    >
+                      {selectedCount}/{kpis.length} ativos
+                    </span>
+                  </div>
+
+                  {kpis.map((kpi, idx) => (
+                    <div
+                      key={kpi.id}
+                      className="chart-row"
+                      style={{
+                        borderBottom: idx < kpis.length - 1 ? `1px solid rgba(62,57,96,0.4)` : "none",
+                        transition: "background 0.1s",
+                      }}
+                    >
+                      <label>
+                        <input
+                          type="checkbox"
+                          checked={config[key].kpiIds.includes(kpi.id)}
+                          onChange={() => toggleKpi(key, kpi.id)}
+                          style={{ width: 15, height: 15, flexShrink: 0 }}
+                        />
+                        <span
+                          style={{
+                            display: "inline-block",
+                            width: 9,
+                            height: 9,
+                            borderRadius: "50%",
+                            background: kpi.accentColor,
+                            flexShrink: 0,
+                          }}
+                        />
+                        <span
+                          style={{
+                            fontSize: 13,
+                            fontWeight: 600,
+                            color: C.white,
+                            flexShrink: 0,
+                            minWidth: 220,
+                          }}
+                        >
+                          {kpi.title}
+                        </span>
+                        <span
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            padding: "1px 7px",
+                            borderRadius: 999,
+                            background: `${kpi.accentColor}22`,
+                            border: `1px solid ${kpi.accentColor}55`,
+                            fontSize: 10,
+                            color: kpi.accentColor,
+                            fontWeight: 700,
+                            flexShrink: 0,
+                          }}
+                        >
+                          {fmtKpi(kpi.format)}
+                        </span>
+                        <span
+                          style={{
+                            fontSize: 12,
+                            color: C.textMuted,
+                            overflow: "hidden",
+                            whiteSpace: "nowrap",
+                            textOverflow: "ellipsis",
+                            flex: 1,
+                            minWidth: 0,
+                          }}
+                        >
+                          {kpi.description}
+                        </span>
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              );
+            })}
           </div>
         )}
       </main>
 
-      {/* ── Footer ── */}
+      {/* ── Footer ─────────────────────────────────────────────────────────── */}
       <footer
         style={{
           borderTop: `1px solid ${C.border}`,

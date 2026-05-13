@@ -9,33 +9,47 @@ import GlobalFilterBar from "@/components/dashboard/GlobalFilterBar";
 import { KPI_REGISTRY, CHART_REGISTRY } from "@/lib/charts/registry";
 import type { KpiId } from "@/lib/charts/registry";
 import type { ChartCompareDatum } from "@/lib/chartTypes";
-import { useDashboardFilter, formatMonthLabel } from "@/lib/dashboardFilters";
+import { useDashboardFilter } from "@/lib/dashboardFilters";
 
-// KPI slot shape from /api/kpis/me
 type KpiSlot = { position: number; kpiId: string };
 
-// All chart + KPI data fetched from the 3 API routes
 type ApiData = {
   kpis: Record<string, number>;
   charts: Record<string, ChartCompareDatum[]>;
 };
 
-// Mini-chart ids shown on the home page
-const HOME_FIN_CHARTS  = ["FIN_001", "FIN_003"] as const;
-const HOME_OPR_CHARTS  = ["OPR_001", "OPR_002"] as const;
-const HOME_FLT_CHARTS  = ["FLT_001", "FLT_002"] as const;
+type SectionConfig = { chartIds: string[] };
+type Configs = Record<"financeiro" | "operacional" | "frota", SectionConfig>;
 
 export default function DashboardHome() {
   const router = useRouter();
   const { ref } = useDashboardFilter();
 
-  const [kpiSlots, setKpiSlots]   = useState<KpiSlot[] | null>(null);
-  const [finData, setFinData]     = useState<ApiData | null>(null);
-  const [oprData, setOprData]     = useState<ApiData | null>(null);
-  const [fltData, setFltData]     = useState<ApiData | null>(null);
+  const [kpiSlots, setKpiSlots] = useState<KpiSlot[] | null>(null);
+  const [configs, setConfigs]   = useState<Configs | null>(null);
+  const [finData, setFinData]   = useState<ApiData | null>(null);
+  const [oprData, setOprData]   = useState<ApiData | null>(null);
+  const [fltData, setFltData]   = useState<ApiData | null>(null);
 
+  // Section configs: fetch once, independent of ref
   useEffect(() => {
-    // Reset data on ref change to show loading state
+    Promise.all([
+      fetch("/api/me/section-config?section=financeiro").then((r) => r.json()),
+      fetch("/api/me/section-config?section=operacional").then((r) => r.json()),
+      fetch("/api/me/section-config?section=frota").then((r) => r.json()),
+    ])
+      .then(([fin, opr, flt]) =>
+        setConfigs({
+          financeiro:  { chartIds: fin.chartIds  ?? [] },
+          operacional: { chartIds: opr.chartIds  ?? [] },
+          frota:       { chartIds: flt.chartIds  ?? [] },
+        })
+      )
+      .catch(() => {});
+  }, []);
+
+  // Chart data: refetch on every ref change
+  useEffect(() => {
     setFinData(null);
     setOprData(null);
     setFltData(null);
@@ -54,7 +68,6 @@ export default function DashboardHome() {
     });
   }, [ref]);
 
-  // Build the 4 KPI slots with their values
   function getKpiValue(kpiId: string): number | null {
     const meta = KPI_REGISTRY.find((k) => k.id === kpiId);
     if (!meta) return null;
@@ -64,19 +77,16 @@ export default function DashboardHome() {
     return source?.kpis?.[kpiId] ?? null;
   }
 
+  // Uses CHART_REGISTRY to find the right data source — no hardcoded arrays
   function getChartData(chartId: string): ChartCompareDatum[] | null {
-    if (HOME_FIN_CHARTS.includes(chartId as typeof HOME_FIN_CHARTS[number])) {
-      return finData?.charts?.[chartId] ?? null;
-    }
-    if (HOME_OPR_CHARTS.includes(chartId as typeof HOME_OPR_CHARTS[number])) {
-      return oprData?.charts?.[chartId] ?? null;
-    }
-    return fltData?.charts?.[chartId] ?? null;
+    const section = CHART_REGISTRY.find((c) => c.id === chartId)?.section;
+    if (section === "financeiro")  return finData?.charts?.[chartId] ?? null;
+    if (section === "operacional") return oprData?.charts?.[chartId] ?? null;
+    if (section === "frota")       return fltData?.charts?.[chartId] ?? null;
+    return null;
   }
 
   const isLoading = kpiSlots === null || finData === null || oprData === null || fltData === null;
-
-  // Slots in order; fallback to empty array while loading
   const slots = kpiSlots ?? [];
 
   return (
@@ -96,14 +106,8 @@ export default function DashboardHome() {
           <GlobalFilterBar />
         </div>
 
-        {/* KPI row — 4 slots */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(4, 1fr)",
-            gap: 16,
-          }}
-        >
+        {/* KPI row */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16 }}>
           {isLoading
             ? Array.from({ length: 4 }).map((_, i) => (
                 <div
@@ -127,30 +131,24 @@ export default function DashboardHome() {
               ))}
         </div>
 
-        {/* 3 sections: mini charts */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(3, 1fr)",
-            gap: 24,
-          }}
-        >
+        {/* 3 section previews */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 24 }}>
           <Section
             title="Financeiro"
             href="/dashboard/financeiro"
-            chartIds={HOME_FIN_CHARTS}
+            chartIds={(configs?.financeiro.chartIds ?? []).slice(0, 2)}
             getData={getChartData}
           />
           <Section
             title="Operacional"
             href="/dashboard/operacional"
-            chartIds={HOME_OPR_CHARTS}
+            chartIds={(configs?.operacional.chartIds ?? []).slice(0, 2)}
             getData={getChartData}
           />
           <Section
             title="Frota"
             href="/dashboard/frota"
-            chartIds={HOME_FLT_CHARTS}
+            chartIds={(configs?.frota.chartIds ?? []).slice(0, 2)}
             getData={getChartData}
           />
         </div>
@@ -159,12 +157,12 @@ export default function DashboardHome() {
   );
 }
 
-// ─── Section ────────────────────────────────────────────────────────────────
+// ─── Section preview ─────────────────────────────────────────────────────────
 
 type SectionProps = {
   title: string;
   href: string;
-  chartIds: readonly string[];
+  chartIds: string[];
   getData: (id: string) => ChartCompareDatum[] | null;
 };
 
@@ -183,7 +181,6 @@ function Section({ title, href, chartIds, getData }: SectionProps) {
         gap: 16,
       }}
     >
-      {/* Section header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <h2 style={{ margin: 0, fontSize: 15, fontWeight: 600, color: "#FFFFFF" }}>
           {title}
@@ -203,18 +200,11 @@ function Section({ title, href, chartIds, getData }: SectionProps) {
         </button>
       </div>
 
-      {/* Mini charts */}
       {chartIds.map((id) => {
         const meta = CHART_REGISTRY.find((c) => c.id === id);
         if (!meta) return null;
         return (
-          <ChartCard
-            key={id}
-            meta={meta}
-            data={getData(id)}
-            height={180}
-            lineDisabled
-          />
+          <ChartCard key={id} meta={meta} data={getData(id)} height={180} lineDisabled />
         );
       })}
     </div>

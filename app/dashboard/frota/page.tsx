@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import AppShell from "@/components/ui/AppShell";
 import ChartCard from "@/components/charts/ChartCard";
 import ChartErrorBoundary from "@/components/charts/ChartErrorBoundary";
-import KpiCard from "@/components/charts/KpiCard";
+import KpiStrip from "@/components/charts/KpiStrip";
 import GlobalFilterBar from "@/components/dashboard/GlobalFilterBar";
 import { CHART_REGISTRY } from "@/lib/charts/registry";
 import type { ChartCompareDatum } from "@/lib/chartTypes";
@@ -15,15 +15,20 @@ type ApiData = {
   charts: Record<string, ChartCompareDatum[]>;
 };
 
-const FLT_CHART_IDS = [
-  "FLT_001", "FLT_002", "FLT_003", "FLT_004", "FLT_005",
-  "FLT_006", "FLT_007", "FLT_008", "FLT_009", "FLT_010",
-] as const;
+type SectionConfig = { chartIds: string[]; kpiIds: string[] };
 
 export default function FrotaPage() {
   const { ref } = useDashboardFilter();
+  const [config, setConfig] = useState<SectionConfig | null>(null);
   const [data, setData] = useState<ApiData | null>(null);
   const [error, setError] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/me/section-config?section=frota")
+      .then((r) => r.json())
+      .then(setConfig)
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     setData(null);
@@ -50,11 +55,12 @@ export default function FrotaPage() {
           <GlobalFilterBar />
         </div>
 
-        {/* KPI strip */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 16, maxWidth: 600 }}>
-          <KpiCard kpiId="KPI_006" value={data?.kpis?.KPI_006 ?? null} />
-          <KpiCard kpiId="KPI_007" value={data?.kpis?.KPI_007 ?? null} />
-        </div>
+        <KpiStrip
+          items={(config?.kpiIds ?? []).map((kpiId) => ({
+            kpiId,
+            value: data?.kpis?.[kpiId] ?? null,
+          }))}
+        />
 
         {error && (
           <p style={{ color: "#EF4444", fontSize: 14 }}>
@@ -62,15 +68,8 @@ export default function FrotaPage() {
           </p>
         )}
 
-        {/* Charts grid */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(2, 1fr)",
-            gap: 20,
-          }}
-        >
-          {FLT_CHART_IDS.map((id) => {
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 20 }}>
+          {(config?.chartIds ?? []).map((id) => {
             const meta = CHART_REGISTRY.find((c) => c.id === id);
             if (!meta) return null;
             return (

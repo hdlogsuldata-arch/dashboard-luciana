@@ -1,12 +1,11 @@
 import AppShell from "@/components/ui/AppShell";
 import UserChartsConfig from "@/components/admin/UserChartsConfig";
 
-// Dynamic segment [id] is available via params when real API is wired up.
-// For now the component uses MOCK_USER — replace it with useParams() + fetch.
-export default function UserGraficosPage() {
+export default async function UserGraficosPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   return (
     <AppShell>
-      <UserChartsConfig />
+      <UserChartsConfig userId={id} />
     </AppShell>
   );
 }
