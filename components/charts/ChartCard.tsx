@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Maximize2 } from "lucide-react";
-import type { ChartType, ChartCompareDatum, ChartSeries } from "../../lib/chartTypes";
+import type { ChartType, ChartCompareDatum, ChartSeries, TargetLine } from "../../lib/chartTypes";
 import type { ChartMetadata } from "../../lib/charts/types";
 import { ChartRenderer } from "./ChartRenderer";
 import ChartTypeToggle from "./ChartTypeToggle";
@@ -16,6 +16,7 @@ type Props = {
   series?: ChartSeries[];
   height?: number;
   lineDisabled?: boolean;
+  targetLine?: TargetLine;
 };
 
 export default function ChartCard({
@@ -24,6 +25,7 @@ export default function ChartCard({
   series,
   height = 280,
   lineDisabled = true,
+  targetLine,
 }: Props) {
   const [activeType, setActiveType] = useState<ChartType>(meta.defaultType);
   const [fullscreen, setFullscreen] = useState(false);
@@ -121,6 +123,7 @@ export default function ChartCard({
           loading={data === null}
           height={height}
           metricFormat={unitFormatter[meta.metricFormat]}
+          targetLine={targetLine}
         />
       </div>
 
@@ -135,6 +138,7 @@ export default function ChartCard({
           onClose={() => setFullscreen(false)}
           ref_={ref}
           lineDisabled={lineDisabled}
+          targetLine={targetLine}
         />
       )}
     </>

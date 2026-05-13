@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { ChartRenderer } from "./ChartRenderer";
 import ChartTypeToggle from "./ChartTypeToggle";
-import type { ChartType, ChartCompareDatum, ChartSeries } from "../../lib/chartTypes";
+import type { ChartType, ChartCompareDatum, ChartSeries, TargetLine } from "../../lib/chartTypes";
 import type { ChartMetadata } from "../../lib/charts/types";
 import { unitFormatter } from "../../lib/formatter";
 import { formatMonthLabel } from "../../lib/dashboardFilters";
@@ -19,6 +19,7 @@ type Props = {
   onClose: () => void;
   ref_: string; // current reference month
   lineDisabled?: boolean;
+  targetLine?: TargetLine;
 };
 
 export default function ChartFullscreen({
@@ -30,6 +31,7 @@ export default function ChartFullscreen({
   onClose,
   ref_,
   lineDisabled = true,
+  targetLine,
 }: Props) {
   // ESC to close
   const handleKey = useCallback(
@@ -142,6 +144,7 @@ export default function ChartFullscreen({
           height="100%"
           metricFormat={unitFormatter[meta.metricFormat]}
           fontScale={1.5}
+          targetLine={targetLine}
         />
       </div>
 
