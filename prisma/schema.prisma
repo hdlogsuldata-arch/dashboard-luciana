@@ -1,0 +1,279 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Veiculo {
+  id              Int        @id @default(autoincrement())
+  placa           String     @unique
+  tipo            String
+  disponivel      Boolean
+  marca           String?
+  modelo          String?
+  capacidade      Float?
+  ano             Int?
+  carroceria      String?
+  eixos           Int?
+  combustivel     String?
+  rastreado       Boolean
+  marcaRastreador String?
+  kmOdometro      Int?
+  tagPedagio      String?
+  unidResp        String?
+  ultimoMvto      DateTime?
+  motoristaId     Int?
+  updatedAt       DateTime   @updatedAt
+  motorista       Motorista? @relation(fields: [motoristaId], references: [id])
+}
+
+model Ctrc {
+  id                 Int          @id @default(autoincrement())
+  numero             String
+  sigla              String
+  situacao           String
+  tipoDocumento      String
+  dataEmissao        DateTime
+  prevEntrega        DateTime?
+  sitLiquidacao      String?
+  dataLiquidacao     DateTime?
+  remetenteNome      String
+  remetenteCnpj      String
+  remetenteCidade    String
+  remetenteUf        String
+  destinatarioNome   String
+  destinatarioCnpj   String
+  destinatarioCidade String
+  destinatarioUf     String
+  pagadorNome        String
+  pagadorCnpj        String
+  resultadoComercial Decimal?
+  grupoCnpj          String?
+  cidadeDestino      String
+  ufDestino          String
+  pesoReal           Float
+  kgCalculo          Float
+  cubagem            Float
+  qtdeVolumes        Int
+  tipoFrete          String
+  tipoMercadoria     String?
+  veiculoColeta      String?
+  veiculoEntrega     String?
+  tabelaCalculo      String?
+  nroManifesto       String?
+  unidEmit           String
+  valorMercadoria    Float
+  valorFrete         Float
+  valorLiquido       Float
+  vlrLiquidado       Float
+  vlrGris            Float?
+  vlrPedagio         Float?
+  vlrIcms            Float?
+  vendedorId         Int?
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+  vendedor           Vendedor?    @relation(fields: [vendedorId], references: [id])
+  lancamentos        Lancamento[]
+  ocorrencias        Ocorrencia[]
+
+  @@unique([sigla, numero])
+  @@index([situacao])
+  @@index([dataEmissao])
+  @@index([pagadorCnpj])
+}
+
+model Motorista {
+  id        Int       @id @default(autoincrement())
+  cpf       String    @unique
+  nome      String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  veiculos  Veiculo[]
+}
+
+model Vendedor {
+  id        Int      @id @default(autoincrement())
+  codigo    Int?     @unique
+  nome      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ctrcs     Ctrc[]
+}
+
+model Ocorrencia {
+  id        Int      @id @default(autoincrement())
+  ctrcId    Int
+  codigo    String
+  descricao String
+  local     String
+  dataHora  DateTime
+  ctrc      Ctrc     @relation(fields: [ctrcId], references: [id])
+
+  @@index([ctrcId])
+}
+
+model Lancamento {
+  id                 Int            @id @default(autoincrement())
+  tipo               TipoLancamento
+  referencia         String
+  emissao            DateTime
+  pagadorCnpj        String
+  pagadorNome        String
+  pagadorCidade      String?
+  pagadorUf          String?
+  vendedor           String?
+  unidResp           String?
+  valor              Float
+  tipoCobranca       String?
+  vencimento         DateTime?
+  diasAtraso         Int?
+  saldo              Float?
+  banco              String?
+  tipoFrete          String?
+  tipoDocumento      String?
+  localizacao        String?
+  dataLiquidacao     DateTime?
+  vlrPago            Float?
+  vencimentoOriginal DateTime?
+  dataCancelamento   DateTime?
+  dataPromessa       DateTime?
+  dataCreditoCaixa   DateTime?
+  vlrCtrcs           Float?
+  vlrDebito          Float?
+  vlrCredito         Float?
+  vlrJuros           Float?
+  vlrMulta           Float?
+  vlrDesconto        Float?
+  liquidada          Boolean?
+  protestada         Boolean?
+  prorrogada         Boolean?
+  tipoBaixa          String?
+  ctrcId             Int?
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+  ctrc               Ctrc?          @relation(fields: [ctrcId], references: [id])
+
+  @@index([tipo])
+  @@index([pagadorCnpj])
+  @@index([emissao])
+  @@index([vencimento])
+}
+
+model User {
+  id                 String      @id @default(cuid())
+  name               String?
+  email              String      @unique
+  passwordHash       String
+  role               Role        @default(VIEWER)
+  image              String?
+  createdAt          DateTime    @default(now())
+  mustChangePassword Boolean     @default(false)
+  allowedDashboards  String[]    @default([])
+  funcao             String      @default("Visualizador")
+  lastLoginAt        DateTime?
+  kpiSlots           UserKpi[]
+  graphCharts        UserChart[]
+  Meta               Meta[]
+}
+
+model UserKpi {
+  userId   String
+  kpiId    String
+  position Int
+  section  String
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, kpiId])
+  @@unique([userId, position])
+}
+
+model UserChart {
+  userId  String
+  chartId String
+  section String
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, chartId])
+}
+
+enum MetaStatus {
+  NO_PRAZO
+  EM_RISCO
+  ATRASADA
+  ALCANCADA
+}
+
+model Meta {
+  id          String     @id @default(cuid())
+  titulo      String
+  kpiId       String
+  targetValue Float
+  deadline    DateTime
+  status      MetaStatus @default(NO_PRAZO)
+  ownerEmail  String
+  owner       User       @relation(fields: [ownerEmail], references: [email])
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+}
+
+model SnapshotImport {
+  id            Int      @id @default(autoincrement())
+  referenceDate String
+  filename      String
+  importedAt    DateTime @default(now())
+  rowCount      Int
+  status        String
+  errorMessage  String?
+
+  @@unique([referenceDate, filename])
+  @@index([referenceDate])
+}
+
+model migrations {
+  name       String   @id
+  applied_at DateTime @default(now()) @db.Timestamptz(6)
+
+  @@map("_migrations")
+}
+
+model ssw_extractions {
+  id            BigInt   @default(autoincrement())
+  report_pasta  String
+  report_codigo Int
+  extracted_at  DateTime @db.Timestamptz(6)
+  data_param    String
+  row_index     Int
+  payload       Json
+
+  @@id([report_pasta, report_codigo, extracted_at, row_index])
+  @@index([report_pasta, report_codigo, extracted_at(sort: Desc)], map: "idx_ssw_lookup")
+  @@index([payload], map: "idx_ssw_payload_gin", type: Gin)
+}
+
+model ssw_runs {
+  extracted_at DateTime @id @db.Timestamptz(6)
+  reports_ok   Int      @default(0)
+  reports_fail Int      @default(0)
+  total_rows   Int      @default(0)
+  duration_ms  Int?
+  errors       Json?
+}
+
+enum TipoLancamento {
+  FRETE_VISTA_NAO_LIQUIDADO
+  DISPONIVEL_FATURAR
+  FATURA_VENCIDA
+  RELATORIO_FATURA
+}
+
+enum Role {
+  ADMIN
+  MANAGER
+  ANALYST
+  OPERATOR
+  VIEWER
+}
