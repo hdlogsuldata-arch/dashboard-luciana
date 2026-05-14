@@ -6,7 +6,8 @@ import { requireAdmin } from "@/lib/auth-server";
 const META_SELECT = {
   id: true,
   titulo: true,
-  kpiId: true,
+  chartId: true,
+  op: true,
   targetValue: true,
   deadline: true,
   status: true,
@@ -29,7 +30,8 @@ export async function GET(req: NextRequest) {
 
 const createSchema = z.object({
   titulo: z.string().trim().min(1, "Título obrigatório"),
-  kpiId: z.string().min(1, "KPI obrigatório"),
+  chartId: z.string().min(1, "Gráfico obrigatório"),
+  op: z.enum([">=", "<="]).default(">="),
   targetValue: z.number({ error: "Valor alvo inválido" }),
   deadline: z.string().min(1, "Prazo obrigatório"),
   status: z.enum(["NO_PRAZO", "EM_RISCO", "ATRASADA", "ALCANCADA"]).default("NO_PRAZO"),
@@ -49,7 +51,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { titulo, kpiId, targetValue, deadline, status, ownerEmail } = parsed.data;
+  const { titulo, chartId, op, targetValue, deadline, status, ownerEmail } = parsed.data;
 
   const owner = await prisma.user.findUnique({ where: { email: ownerEmail } });
   if (!owner) {
@@ -58,7 +60,7 @@ export async function POST(req: NextRequest) {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const meta = await prisma.meta.create({
-    data: { titulo, kpiId, targetValue, deadline: new Date(deadline), status: status as any, ownerEmail },
+    data: { titulo, chartId, op, targetValue, deadline: new Date(deadline), status: status as any, ownerEmail },
     select: META_SELECT,
   });
 

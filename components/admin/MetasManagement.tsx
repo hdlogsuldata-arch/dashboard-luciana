@@ -5,7 +5,7 @@ import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
 import Toast, { type ToastItem } from "./Toast";
 import Modal from "./Modal";
 import MetaFormModal, { type EditableMeta, type MetaFormData, type DbStatus } from "./MetaFormModal";
-import { KPI_REGISTRY } from "@/lib/charts/registry";
+import { CHART_REGISTRY } from "@/lib/charts/registry";
 import { apiFetch } from "@/lib/api";
 import { unitFormatter, type MetricUnit } from "@/lib/formatter";
 
@@ -40,7 +40,8 @@ const DB_TO_STATUS: Record<DbStatus, MetaStatus> = {
 interface ApiMeta {
   id: string;
   titulo: string;
-  kpiId: string;
+  chartId: string;
+  op: string;
   targetValue: number;
   deadline: string;
   status: DbStatus;
@@ -52,23 +53,32 @@ interface ApiMeta {
 interface MetaRow {
   id: string;
   titulo: string;
-  kpiTitle: string;
-  kpiAccentColor: string;
+  chartTitle: string;
+  chartSection: string;
+  op: string;
   targetFormatted: string;
   deadline: string;
   owner: string;
   status: MetaStatus;
 }
 
+const SECTION_COLORS: Record<string, string> = {
+  financeiro:  "#F3DE3D",
+  operacional: "#10B981",
+  frota:       "#3B82F6",
+};
+
 function apiToRow(m: ApiMeta): MetaRow {
-  const kpi = KPI_REGISTRY.find((k) => k.id === m.kpiId);
-  const fmt = (kpi?.format ?? "int") as MetricUnit;
+  const chart = CHART_REGISTRY.find((c) => c.id === m.chartId);
+  const fmt = (chart?.metricFormat ?? "int") as MetricUnit;
+  const opLabel = m.op === ">=" ? "≥" : "≤";
   return {
     id: m.id,
     titulo: m.titulo,
-    kpiTitle: kpi?.title ?? m.kpiId,
-    kpiAccentColor: kpi?.accentColor ?? "#888888",
-    targetFormatted: unitFormatter[fmt](m.targetValue),
+    chartTitle: chart?.title ?? m.chartId,
+    chartSection: chart?.section ?? "–",
+    op: opLabel,
+    targetFormatted: `${opLabel} ${unitFormatter[fmt](m.targetValue)}`,
     deadline: new Date(m.deadline).toLocaleDateString("pt-BR"),
     owner: m.owner.name ?? m.owner.email,
     status: DB_TO_STATUS[m.status] ?? "on_track",
@@ -79,7 +89,8 @@ function toEditable(m: ApiMeta): EditableMeta {
   return {
     id: m.id,
     titulo: m.titulo,
-    kpiId: m.kpiId,
+    chartId: m.chartId,
+    op: m.op as ">=" | "<=",
     targetValue: m.targetValue,
     deadline: m.deadline,
     status: m.status,
@@ -360,7 +371,7 @@ export default function MetasManagement() {
     const q = search.toLowerCase();
     return (
       m.titulo.toLowerCase().includes(q) ||
-      m.kpiTitle.toLowerCase().includes(q) ||
+      m.chartTitle.toLowerCase().includes(q) ||
       m.owner.toLowerCase().includes(q)
     );
   });
@@ -496,7 +507,7 @@ export default function MetasManagement() {
           </div>
           <input
             type="text"
-            placeholder="Pesquisar por título, KPI ou responsável..."
+            placeholder="Pesquisar por título, gráfico ou responsável..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             style={{
@@ -650,7 +661,7 @@ export default function MetasManagement() {
               padding: "0 20px",
             }}
           >
-            {["Meta / KPI", "Valor Alvo", "Prazo", "Responsável", "Status", "Ações"].map((h) => (
+            {["Meta / Gráfico", "Valor Alvo", "Prazo", "Responsável", "Status", "Ações"].map((h) => (
               <div
                 key={h}
                 style={{
@@ -696,7 +707,7 @@ export default function MetasManagement() {
                 transition: "background 0.1s",
               }}
             >
-              {/* Meta / KPI */}
+              {/* Meta / Gráfico */}
               <div style={{ padding: "16px 8px" }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: C.white, marginBottom: 5 }}>
                   {m.titulo}
@@ -705,10 +716,10 @@ export default function MetasManagement() {
                   <span
                     style={{
                       display: "inline-block", width: 8, height: 8,
-                      borderRadius: "50%", background: m.kpiAccentColor, flexShrink: 0,
+                      borderRadius: "50%", background: SECTION_COLORS[m.chartSection] ?? "#888888", flexShrink: 0,
                     }}
                   />
-                  <span style={{ fontSize: 11, color: C.textMuted }}>{m.kpiTitle}</span>
+                  <span style={{ fontSize: 11, color: C.textMuted }}>{m.chartTitle}</span>
                 </div>
               </div>
 

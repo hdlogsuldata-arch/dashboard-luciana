@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import Modal from "./Modal";
-import { KPI_REGISTRY } from "@/lib/charts/registry";
+import { CHART_REGISTRY } from "@/lib/charts/registry";
 import { apiFetch } from "@/lib/api";
 import { unitFormatter, type MetricUnit } from "@/lib/formatter";
 
@@ -51,7 +51,8 @@ const FORMAT_PLACEHOLDER: Record<string, string> = {
 
 export interface MetaFormData {
   titulo: string;
-  kpiId: string;
+  chartId: string;
+  op: ">=" | "<=";
   targetValue: number;
   deadline: string;
   status: DbStatus;
@@ -71,7 +72,7 @@ interface Props {
 
 interface FormErrors {
   titulo?: string;
-  kpiId?: string;
+  chartId?: string;
   targetValue?: string;
   deadline?: string;
   ownerEmail?: string;
@@ -125,8 +126,8 @@ function baseInputStyle(hasError?: boolean): React.CSSProperties {
   };
 }
 
-// Group KPIs by section for the select optgroups
-const KPI_SECTIONS = [
+// Group charts by section for the select optgroups
+const CHART_SECTIONS = [
   { label: "Financeiro",  section: "financeiro"  },
   { label: "Operacional", section: "operacional" },
   { label: "Frota",       section: "frota"       },
@@ -136,7 +137,8 @@ export default function MetaFormModal({ open, onClose, onSave, editMeta }: Props
   const isEdit = !!editMeta;
 
   const [titulo, setTitulo]           = useState("");
-  const [kpiId, setKpiId]             = useState("");
+  const [chartId, setChartId]         = useState("");
+  const [op, setOp]                   = useState<">=" | "<=">(">=");
   const [targetStr, setTargetStr]     = useState("");
   const [deadline, setDeadline]       = useState("");
   const [status, setStatus]           = useState<DbStatus>("NO_PRAZO");
@@ -157,18 +159,16 @@ export default function MetaFormModal({ open, onClose, onSave, editMeta }: Props
     if (!open) return;
     if (editMeta) {
       setTitulo(editMeta.titulo);
-      setKpiId(editMeta.kpiId);
-      const editKpi = KPI_REGISTRY.find((k) => k.id === editMeta.kpiId);
-      const displayValue = editKpi?.format === "pct"
-        ? String(+(editMeta.targetValue * 100).toFixed(4))
-        : String(editMeta.targetValue);
-      setTargetStr(displayValue);
+      setChartId(editMeta.chartId);
+      setOp(editMeta.op);
+      setTargetStr(String(editMeta.targetValue));
       setDeadline(editMeta.deadline.slice(0, 10));
       setStatus(editMeta.status);
       setOwnerEmail(editMeta.ownerEmail);
     } else {
       setTitulo("");
-      setKpiId("");
+      setChartId("");
+      setOp(">=");
       setTargetStr("");
       setDeadline("");
       setStatus("NO_PRAZO");
@@ -178,21 +178,20 @@ export default function MetaFormModal({ open, onClose, onSave, editMeta }: Props
     setSaving(false);
   }, [open, editMeta]);
 
-  const selectedKpi = KPI_REGISTRY.find((k) => k.id === kpiId);
+  const selectedChart = CHART_REGISTRY.find((c) => c.id === chartId);
 
   // Live preview: shows how the stored value will be displayed
   const targetPreview = useMemo(() => {
-    if (!selectedKpi || !targetStr) return null;
+    if (!selectedChart || !targetStr) return null;
     const raw = parseFloat(targetStr.replace(",", "."));
     if (isNaN(raw) || !isFinite(raw)) return null;
-    const stored = selectedKpi.format === "pct" ? raw / 100 : raw;
-    return unitFormatter[selectedKpi.format as MetricUnit](stored);
-  }, [selectedKpi, targetStr]);
+    return unitFormatter[selectedChart.metricFormat as MetricUnit](raw);
+  }, [selectedChart, targetStr]);
 
   const validate = (): FormErrors => {
     const e: FormErrors = {};
     if (!titulo.trim()) e.titulo = "Título obrigatório";
-    if (!kpiId) e.kpiId = "Selecione um KPI";
+    if (!chartId) e.chartId = "Selecione um gráfico";
     const tv = parseFloat(targetStr.replace(",", "."));
     if (!targetStr || isNaN(tv)) e.targetValue = "Valor alvo inválido";
     if (!deadline) e.deadline = "Prazo obrigatório";
@@ -208,11 +207,11 @@ export default function MetaFormModal({ open, onClose, onSave, editMeta }: Props
     }
     setSaving(true);
     try {
-      const rawValue = parseFloat(targetStr.replace(",", "."));
-      const targetValue = selectedKpi?.format === "pct" ? rawValue / 100 : rawValue;
+      const targetValue = parseFloat(targetStr.replace(",", "."));
       await onSave({
         titulo: titulo.trim(),
-        kpiId,
+        chartId,
+        op,
         targetValue,
         deadline,
         status,
@@ -241,22 +240,22 @@ export default function MetaFormModal({ open, onClose, onSave, editMeta }: Props
           />
         </Field>
 
-        {/* KPI */}
-        <Field label="KPI vinculado" error={errors.kpiId}>
+        {/* Gráfico */}
+        <Field label="Gráfico vinculado" error={errors.chartId}>
           <select
-            value={kpiId}
-            onChange={(e) => setKpiId(e.target.value)}
-            style={{ ...baseInputStyle(!!errors.kpiId), appearance: "none", cursor: "pointer" }}
+            value={chartId}
+            onChange={(e) => setChartId(e.target.value)}
+            style={{ ...baseInputStyle(!!errors.chartId), appearance: "none", cursor: "pointer" }}
           >
-            <option value="" style={{ background: C.inputBg }}>Selecione um KPI...</option>
-            {KPI_SECTIONS.map((g) => {
-              const kpis = KPI_REGISTRY.filter((k) => k.section === g.section);
-              if (!kpis.length) return null;
+            <option value="" style={{ background: C.inputBg }}>Selecione um gráfico...</option>
+            {CHART_SECTIONS.map((g) => {
+              const charts = CHART_REGISTRY.filter((c) => c.section === g.section);
+              if (!charts.length) return null;
               return (
                 <optgroup key={g.section} label={g.label}>
-                  {kpis.map((k) => (
-                    <option key={k.id} value={k.id} style={{ background: C.inputBg }}>
-                      {k.title}
+                  {charts.map((c) => (
+                    <option key={c.id} value={c.id} style={{ background: C.inputBg }}>
+                      {c.title}
                     </option>
                   ))}
                 </optgroup>
@@ -265,15 +264,62 @@ export default function MetaFormModal({ open, onClose, onSave, editMeta }: Props
           </select>
         </Field>
 
+        {/* Direção da meta (op toggle) */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+          <label style={{ fontSize: 12, fontWeight: 700, color: C.textLight, letterSpacing: "0.2px" }}>
+            Direção da meta
+          </label>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button
+              type="button"
+              onClick={() => setOp(">=")}
+              style={{
+                flex: 1,
+                height: 38,
+                borderRadius: 8,
+                border: `1px solid ${op === ">=" ? C.yellow : C.border}`,
+                background: op === ">=" ? "#F3DE3D" : C.panel,
+                color: op === ">=" ? "rgb(30,20,97)" : C.textLight,
+                fontSize: 13,
+                fontWeight: 700,
+                cursor: "pointer",
+                fontFamily: "inherit",
+                transition: "all 0.15s",
+              }}
+            >
+              ≥ Acima de
+            </button>
+            <button
+              type="button"
+              onClick={() => setOp("<=")}
+              style={{
+                flex: 1,
+                height: 38,
+                borderRadius: 8,
+                border: `1px solid ${op === "<=" ? C.yellow : C.border}`,
+                background: op === "<=" ? "#F3DE3D" : C.panel,
+                color: op === "<=" ? "rgb(30,20,97)" : C.textLight,
+                fontSize: 13,
+                fontWeight: 700,
+                cursor: "pointer",
+                fontFamily: "inherit",
+                transition: "all 0.15s",
+              }}
+            >
+              ≤ Abaixo de
+            </button>
+          </div>
+        </div>
+
         {/* Valor Alvo + Prazo */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
           {/* Valor Alvo — with dynamic unit label, suffix and live preview */}
           <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
             <label style={{ fontSize: 12, fontWeight: 700, color: C.textLight, letterSpacing: "0.2px" }}>
               Valor Alvo
-              {selectedKpi && (
+              {selectedChart && (
                 <span style={{ fontWeight: 400, color: C.textMuted, marginLeft: 5 }}>
-                  ({FORMAT_UNIT[selectedKpi.format] ?? selectedKpi.format})
+                  ({FORMAT_UNIT[selectedChart.metricFormat] ?? selectedChart.metricFormat})
                 </span>
               )}
             </label>
@@ -284,15 +330,15 @@ export default function MetaFormModal({ open, onClose, onSave, editMeta }: Props
                 inputMode="decimal"
                 value={targetStr}
                 onChange={(e) => setTargetStr(e.target.value)}
-                placeholder={selectedKpi ? FORMAT_PLACEHOLDER[selectedKpi.format] ?? "Ex: 0" : "Selecione um KPI primeiro"}
+                placeholder={selectedChart ? FORMAT_PLACEHOLDER[selectedChart.metricFormat] ?? "Ex: 0" : "Selecione um gráfico primeiro"}
                 style={{
                   ...baseInputStyle(!!errors.targetValue),
-                  paddingRight: selectedKpi ? 44 : 14,
+                  paddingRight: selectedChart ? 44 : 14,
                 }}
                 onFocus={(e) => { if (!errors.targetValue) e.target.style.borderColor = C.yellow; }}
                 onBlur={(e) => { e.target.style.borderColor = errors.targetValue ? C.red : C.inputBdr; }}
               />
-              {selectedKpi && (
+              {selectedChart && (
                 <span
                   style={{
                     position: "absolute",
@@ -306,7 +352,7 @@ export default function MetaFormModal({ open, onClose, onSave, editMeta }: Props
                     userSelect: "none",
                   }}
                 >
-                  {FORMAT_UNIT[selectedKpi.format]}
+                  {FORMAT_UNIT[selectedChart.metricFormat]}
                 </span>
               )}
             </div>

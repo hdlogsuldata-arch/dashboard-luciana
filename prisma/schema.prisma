@@ -210,7 +210,8 @@ enum MetaStatus {
 model Meta {
   id          String     @id @default(cuid())
   titulo      String
-  kpiId       String
+  chartId     String
+  op          String     @default(">=")
   targetValue Float
   deadline    DateTime
   status      MetaStatus @default(NO_PRAZO)

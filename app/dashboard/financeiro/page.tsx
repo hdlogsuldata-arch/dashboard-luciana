@@ -7,12 +7,11 @@ import ChartErrorBoundary from "@/components/charts/ChartErrorBoundary";
 import KpiStrip from "@/components/charts/KpiStrip";
 import MetasStrip, { type MetaStripItem } from "@/components/charts/MetasStrip";
 import GlobalFilterBar from "@/components/dashboard/GlobalFilterBar";
-import { CHART_REGISTRY, KPI_REGISTRY } from "@/lib/charts/registry";
-import { KPI_BETTER_WHEN, KPI_TO_CHART_TARGETS } from "@/lib/charts/metaTargets";
+import { CHART_REGISTRY } from "@/lib/charts/registry";
+import type { DonutBadge } from "@/components/charts/ChartCard";
 import { unitFormatter } from "@/lib/formatter";
 import type { MetricUnit } from "@/lib/formatter";
 import type { ChartCompareDatum, TargetLine } from "@/lib/chartTypes";
-import type { KpiTarget } from "@/components/charts/KpiCard";
 import { useDashboardFilter } from "@/lib/dashboardFilters";
 
 type ApiData = {
@@ -25,7 +24,8 @@ type SectionConfig = { chartIds: string[]; kpiIds: string[] };
 interface ApiMeta {
   id: string;
   titulo: string;
-  kpiId: string;
+  chartId: string;
+  op: string;
   targetValue: number;
   deadline: string;
   status: "NO_PRAZO" | "EM_RISCO" | "ATRASADA" | "ALCANCADA";
@@ -61,40 +61,32 @@ export default function FinanceiroPage() {
       .catch(() => {});
   }, []);
 
-  // KPI targets: one meta per kpiId (first match)
-  const kpiTargets = useMemo(() => {
-    const result: Record<string, KpiTarget> = {};
+  // Direct chart targets from meta.chartId
+  const chartTargets = useMemo(() => {
+    const result: Record<string, TargetLine> = {};
     for (const m of metas) {
-      if (!result[m.kpiId]) {
-        const kpi = KPI_REGISTRY.find((k) => k.id === m.kpiId);
-        if (kpi) {
-          result[m.kpiId] = {
-            value: m.targetValue,
-            formatted: unitFormatter[kpi.format as MetricUnit](m.targetValue),
-            titulo: m.titulo,
-            status: m.status,
-            betterWhen: KPI_BETTER_WHEN[m.kpiId] ?? "higher",
-          };
-        }
+      if (!result[m.chartId]) {
+        result[m.chartId] = {
+          value: m.targetValue,
+          label: m.titulo,
+          op: m.op as ">=" | "<=",
+        };
       }
     }
     return result;
   }, [metas]);
 
-  // Chart targets: maps chartId → TargetLine
-  const chartTargets = useMemo(() => {
-    const result: Record<string, TargetLine> = {};
+  // Donut badges for charts whose defaultType is "donut"
+  const donutBadges = useMemo(() => {
+    const result: Record<string, DonutBadge> = {};
     for (const m of metas) {
-      const chartIds = KPI_TO_CHART_TARGETS[m.kpiId] ?? [];
-      const bw = KPI_BETTER_WHEN[m.kpiId] ?? "higher";
-      for (const chartId of chartIds) {
-        if (!result[chartId]) {
-          result[chartId] = {
-            value: m.targetValue,
-            label: m.titulo,
-            op: bw === "higher" ? ">=" : "<=",
-          };
-        }
+      const chart = CHART_REGISTRY.find((c) => c.id === m.chartId);
+      if (chart?.defaultType === "donut" && !result[m.chartId]) {
+        result[m.chartId] = {
+          op: m.op === ">=" ? "≥" : "≤",
+          formatted: unitFormatter[chart.metricFormat as MetricUnit](m.targetValue),
+          titulo: m.titulo,
+        };
       }
     }
     return result;
@@ -120,7 +112,6 @@ export default function FinanceiroPage() {
           items={(config?.kpiIds ?? []).map((kpiId) => ({
             kpiId,
             value: data?.kpis?.[kpiId] ?? null,
-            target: kpiTargets[kpiId],
           }))}
         />
 
@@ -143,6 +134,7 @@ export default function FinanceiroPage() {
                   data={data?.charts?.[id] ?? null}
                   lineDisabled
                   targetLine={chartTargets[id]}
+                  donutBadge={donutBadges[id]}
                 />
               </ChartErrorBoundary>
             );

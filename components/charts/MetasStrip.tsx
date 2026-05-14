@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { KPI_REGISTRY } from "../../lib/charts/registry";
+import { CHART_REGISTRY } from "../../lib/charts/registry";
 import { unitFormatter } from "../../lib/formatter";
 import type { MetricUnit } from "../../lib/formatter";
 
@@ -10,7 +10,8 @@ type MetaStatus = "NO_PRAZO" | "EM_RISCO" | "ATRASADA" | "ALCANCADA";
 export interface MetaStripItem {
   id: string;
   titulo: string;
-  kpiId: string;
+  chartId: string;
+  op: string;
   targetValue: number;
   deadline: string; // ISO
   status: MetaStatus;
@@ -23,17 +24,26 @@ const STATUS_CONFIG: Record<MetaStatus, { color: string; label: string; border: 
   ALCANCADA: { color: "rgb(147,197,253)", label: "Atingida", border: "rgba(59,130,246,0.35)" },
 };
 
+const SECTION_DOT_COLORS: Record<string, string> = {
+  financeiro:  "#F3DE3D",
+  operacional: "#10B981",
+  frota:       "#3B82F6",
+};
+
 function MetaCard({ item }: { item: MetaStripItem }) {
-  const kpi = KPI_REGISTRY.find((k) => k.id === item.kpiId);
+  const chart = CHART_REGISTRY.find((c) => c.id === item.chartId);
   const s = STATUS_CONFIG[item.status];
-  const formatted = kpi
-    ? unitFormatter[kpi.format as MetricUnit](item.targetValue)
+  const fmt = chart?.metricFormat ?? "int";
+  const formatted = chart
+    ? unitFormatter[fmt as MetricUnit](item.targetValue)
     : String(item.targetValue);
   const deadline = new Date(item.deadline).toLocaleDateString("pt-BR", {
     day: "2-digit",
     month: "2-digit",
     year: "2-digit",
   });
+  const opLabel = item.op === ">=" ? "≥" : "≤";
+  const dotColor = SECTION_DOT_COLORS[chart?.section ?? ""] ?? "#888888";
 
   return (
     <div
@@ -81,20 +91,18 @@ function MetaCard({ item }: { item: MetaStripItem }) {
         {item.titulo}
       </p>
 
-      {/* KPI + target */}
+      {/* Chart + target */}
       <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-        {kpi && (
-          <span
-            style={{
-              display: "inline-block",
-              width: 6,
-              height: 6,
-              borderRadius: "50%",
-              background: kpi.accentColor,
-              flexShrink: 0,
-            }}
-          />
-        )}
+        <span
+          style={{
+            display: "inline-block",
+            width: 6,
+            height: 6,
+            borderRadius: "50%",
+            background: dotColor,
+            flexShrink: 0,
+          }}
+        />
         <span
           style={{
             fontSize: 10,
@@ -105,7 +113,7 @@ function MetaCard({ item }: { item: MetaStripItem }) {
             flex: 1,
           }}
         >
-          {kpi?.title ?? item.kpiId}
+          {chart?.title ?? item.chartId}
         </span>
         <span
           style={{
@@ -116,7 +124,7 @@ function MetaCard({ item }: { item: MetaStripItem }) {
             flexShrink: 0,
           }}
         >
-          {formatted}
+          {opLabel} {formatted}
         </span>
       </div>
     </div>
