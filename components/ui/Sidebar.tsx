@@ -9,7 +9,6 @@ import {
   TrendingUp,
   Truck,
   Target,
-  FileText,
   Users,
   LogOut,
 } from "lucide-react";
@@ -19,7 +18,6 @@ const DASHBOARD_META: Record<string, { icon: React.ReactNode; href: string }> = 
   dash_financeiro:  { icon: <TrendingUp size={18} />, href: "/dashboard/financeiro" },
   dash_frota:       { icon: <Truck size={18} />, href: "/dashboard/frota" },
   metas:            { icon: <Target size={18} />, href: "/dashboard/metas" },
-  relatorios:       { icon: <FileText size={18} />, href: "/dashboard/relatorios" },
   usuarios:         { icon: <Users size={18} />, href: "/admin/usuarios" },
 };
 

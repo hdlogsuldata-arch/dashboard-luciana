@@ -8,7 +8,8 @@ import KpiStrip from "@/components/charts/KpiStrip";
 import MetasStrip, { type MetaStripItem } from "@/components/charts/MetasStrip";
 import GlobalFilterBar from "@/components/dashboard/GlobalFilterBar";
 import { CHART_REGISTRY, KPI_REGISTRY } from "@/lib/charts/registry";
-import { KPI_BETTER_WHEN, KPI_TO_CHART_TARGETS } from "@/lib/charts/metaTargets";
+import { KPI_BETTER_WHEN, KPI_TO_CHART_TARGETS, KPI_DONUT_BADGE_TARGETS } from "@/lib/charts/metaTargets";
+import type { DonutBadge } from "@/components/charts/ChartCard";
 import { unitFormatter } from "@/lib/formatter";
 import type { MetricUnit } from "@/lib/formatter";
 import type { ChartCompareDatum, TargetLine } from "@/lib/chartTypes";
@@ -81,6 +82,26 @@ export default function FrotaPage() {
     return result;
   }, [metas]);
 
+  // Donut badge targets: maps chartId → DonutBadge (for donut charts with pct metas)
+  const donutBadges = useMemo(() => {
+    const result: Record<string, DonutBadge> = {};
+    for (const m of metas) {
+      const chartIds = KPI_DONUT_BADGE_TARGETS[m.kpiId] ?? [];
+      const kpi = KPI_REGISTRY.find((k) => k.id === m.kpiId);
+      const bw = KPI_BETTER_WHEN[m.kpiId] ?? "higher";
+      for (const chartId of chartIds) {
+        if (!result[chartId] && kpi) {
+          result[chartId] = {
+            op: bw === "higher" ? "≥" : "≤",
+            formatted: unitFormatter[kpi.format as MetricUnit](m.targetValue),
+            titulo: m.titulo,
+          };
+        }
+      }
+    }
+    return result;
+  }, [metas]);
+
   // Chart targets: maps chartId → TargetLine
   const chartTargets = useMemo(() => {
     const result: Record<string, TargetLine> = {};
@@ -99,6 +120,25 @@ export default function FrotaPage() {
     }
     return result;
   }, [metas]);
+
+  // Extended targets: adds pct→count conversion for donut charts that also support bar mode.
+  // FLT_007 (Taxa de Rastreamento): target% × total fleet (KPI_006) → count for bar mode.
+  const allChartTargets = useMemo(() => {
+    const result = { ...chartTargets };
+    for (const m of metas) {
+      if (m.kpiId === "KPI_007") {
+        const total = data?.kpis?.["KPI_006"];
+        if (total && total > 0) {
+          result["FLT_007"] = {
+            value: m.targetValue * total,
+            label: m.titulo,
+            op: ">=",
+          };
+        }
+      }
+    }
+    return result;
+  }, [chartTargets, metas, data]);
 
   return (
     <AppShell>
@@ -142,7 +182,8 @@ export default function FrotaPage() {
                   meta={meta}
                   data={data?.charts?.[id] ?? null}
                   lineDisabled
-                  targetLine={chartTargets[id]}
+                  targetLine={allChartTargets[id]}
+                  donutBadge={donutBadges[id]}
                 />
               </ChartErrorBoundary>
             );

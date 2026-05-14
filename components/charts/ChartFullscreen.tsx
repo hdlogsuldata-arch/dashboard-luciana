@@ -7,6 +7,7 @@ import { ChartRenderer } from "./ChartRenderer";
 import ChartTypeToggle from "./ChartTypeToggle";
 import type { ChartType, ChartCompareDatum, ChartSeries, TargetLine } from "../../lib/chartTypes";
 import type { ChartMetadata } from "../../lib/charts/types";
+import type { DonutBadge } from "./ChartCard";
 import { unitFormatter } from "../../lib/formatter";
 import { formatMonthLabel } from "../../lib/dashboardFilters";
 
@@ -17,9 +18,10 @@ type Props = {
   activeType: ChartType;
   onChangeType: (t: ChartType) => void;
   onClose: () => void;
-  ref_: string; // current reference month
+  ref_: string;
   lineDisabled?: boolean;
   targetLine?: TargetLine;
+  donutBadge?: DonutBadge;
 };
 
 export default function ChartFullscreen({
@@ -32,6 +34,7 @@ export default function ChartFullscreen({
   ref_,
   lineDisabled = true,
   targetLine,
+  donutBadge,
 }: Props) {
   // ESC to close
   const handleKey = useCallback(
@@ -77,20 +80,43 @@ export default function ChartFullscreen({
           <p style={{ margin: 0, fontSize: 13, color: "#646C7F", fontWeight: 500 }}>
             {meta.id} · {formatMonthLabel(ref_)}
           </p>
-          <h2
-            style={{
-              margin: "4px 0 0",
-              fontSize: 26,
-              fontWeight: 700,
-              color: "#FFFFFF",
-              lineHeight: 1.2,
-              whiteSpace: "nowrap",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-            }}
-          >
-            {meta.title}
-          </h2>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 4, flexWrap: "wrap" }}>
+            <h2
+              style={{
+                margin: 0,
+                fontSize: 26,
+                fontWeight: 700,
+                color: "#FFFFFF",
+                lineHeight: 1.2,
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+              }}
+            >
+              {meta.title}
+            </h2>
+            {donutBadge && activeType === "donut" && (
+              <span
+                title={donutBadge.titulo}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 4,
+                  padding: "3px 10px",
+                  borderRadius: 999,
+                  background: "rgba(243,222,61,0.1)",
+                  border: "1px dashed rgba(243,222,61,0.5)",
+                  color: "#F3DE3D",
+                  fontSize: 13,
+                  fontWeight: 700,
+                  whiteSpace: "nowrap",
+                  flexShrink: 0,
+                }}
+              >
+                Meta {donutBadge.op} {donutBadge.formatted}
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Right: toggle + close */}

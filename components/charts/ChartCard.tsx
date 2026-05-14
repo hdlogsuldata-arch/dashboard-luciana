@@ -10,13 +10,20 @@ import ChartFullscreen from "./ChartFullscreen";
 import { unitFormatter } from "../../lib/formatter";
 import { useDashboardFilter } from "../../lib/dashboardFilters";
 
+export interface DonutBadge {
+  op: "≥" | "≤";
+  formatted: string; // pre-formatted value (e.g. "95,0%")
+  titulo: string;
+}
+
 type Props = {
   meta: ChartMetadata;
-  data: ChartCompareDatum[] | null; // null = loading
+  data: ChartCompareDatum[] | null;
   series?: ChartSeries[];
   height?: number;
   lineDisabled?: boolean;
   targetLine?: TargetLine;
+  donutBadge?: DonutBadge;
 };
 
 export default function ChartCard({
@@ -26,10 +33,13 @@ export default function ChartCard({
   height = 280,
   lineDisabled = true,
   targetLine,
+  donutBadge,
 }: Props) {
   const [activeType, setActiveType] = useState<ChartType>(meta.defaultType);
   const [fullscreen, setFullscreen] = useState(false);
   const { ref } = useDashboardFilter();
+
+  const showDonutBadge = donutBadge && activeType === "donut";
 
   return (
     <>
@@ -53,24 +63,49 @@ export default function ChartCard({
             gap: 8,
           }}
         >
-          <div style={{ minWidth: 0 }}>
+          <div style={{ minWidth: 0, flex: 1 }}>
             <p style={{ margin: 0, fontSize: 11, color: "#646C7F", fontWeight: 500 }}>
               {meta.id}
             </p>
-            <h3
-              style={{
-                margin: 0,
-                fontSize: 14,
-                fontWeight: 600,
-                color: "#FFFFFF",
-                lineHeight: 1.3,
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-              }}
-            >
-              {meta.title}
-            </h3>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+              <h3
+                style={{
+                  margin: 0,
+                  fontSize: 14,
+                  fontWeight: 600,
+                  color: "#FFFFFF",
+                  lineHeight: 1.3,
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                }}
+              >
+                {meta.title}
+              </h3>
+
+              {/* Meta badge — shown instead of a reference line for donut charts */}
+              {showDonutBadge && (
+                <span
+                  title={donutBadge.titulo}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 4,
+                    padding: "2px 7px",
+                    borderRadius: 999,
+                    background: "rgba(243,222,61,0.1)",
+                    border: "1px dashed rgba(243,222,61,0.5)",
+                    color: "#F3DE3D",
+                    fontSize: 11,
+                    fontWeight: 700,
+                    whiteSpace: "nowrap",
+                    flexShrink: 0,
+                  }}
+                >
+                  Meta {donutBadge.op} {donutBadge.formatted}
+                </span>
+              )}
+            </div>
           </div>
 
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
@@ -83,7 +118,6 @@ export default function ChartCard({
               />
             )}
 
-            {/* Expand button */}
             <button
               onClick={() => setFullscreen(true)}
               title="Tela cheia"
@@ -127,7 +161,6 @@ export default function ChartCard({
         />
       </div>
 
-      {/* Fullscreen overlay (portal) */}
       {fullscreen && (
         <ChartFullscreen
           meta={meta}
@@ -139,6 +172,7 @@ export default function ChartCard({
           ref_={ref}
           lineDisabled={lineDisabled}
           targetLine={targetLine}
+          donutBadge={donutBadge}
         />
       )}
     </>

@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import Modal from "./Modal";
 import { KPI_REGISTRY } from "@/lib/charts/registry";
 import { apiFetch } from "@/lib/api";
+import { unitFormatter, type MetricUnit } from "@/lib/formatter";
 
 const C = {
   border:    "rgb(62,57,96)",
@@ -28,13 +29,24 @@ const STATUS_OPTS: { value: DbStatus; label: string }[] = [
   { value: "ALCANCADA", label: "Atingida"  },
 ];
 
-const FORMAT_HINT: Record<string, string> = {
-  brl:  "Número em R$ — ex: 800000 = R$ 800.000,00",
-  pct:  "Fração 0–1 — ex: 0.9 = 90%",
-  int:  "Número inteiro — ex: 150",
-  days: "Dias inteiros — ex: 30",
-  km:   "Quilômetros inteiros",
-  m3:   "Metros cúbicos",
+// Unit label shown next to the field label and as suffix inside the input
+const FORMAT_UNIT: Record<string, string> = {
+  brl:  "R$",
+  pct:  "%",
+  int:  "un.",
+  days: "dias",
+  km:   "km",
+  m3:   "m³",
+};
+
+// Placeholder text per format
+const FORMAT_PLACEHOLDER: Record<string, string> = {
+  brl:  "Ex: 800000",
+  pct:  "Ex: 90  (para 90%)",
+  int:  "Ex: 150",
+  days: "Ex: 30",
+  km:   "Ex: 50000",
+  m3:   "Ex: 45.5",
 };
 
 export interface MetaFormData {
@@ -146,7 +158,11 @@ export default function MetaFormModal({ open, onClose, onSave, editMeta }: Props
     if (editMeta) {
       setTitulo(editMeta.titulo);
       setKpiId(editMeta.kpiId);
-      setTargetStr(String(editMeta.targetValue));
+      const editKpi = KPI_REGISTRY.find((k) => k.id === editMeta.kpiId);
+      const displayValue = editKpi?.format === "pct"
+        ? String(+(editMeta.targetValue * 100).toFixed(4))
+        : String(editMeta.targetValue);
+      setTargetStr(displayValue);
       setDeadline(editMeta.deadline.slice(0, 10));
       setStatus(editMeta.status);
       setOwnerEmail(editMeta.ownerEmail);
@@ -163,7 +179,15 @@ export default function MetaFormModal({ open, onClose, onSave, editMeta }: Props
   }, [open, editMeta]);
 
   const selectedKpi = KPI_REGISTRY.find((k) => k.id === kpiId);
-  const formatHint  = selectedKpi ? FORMAT_HINT[selectedKpi.format] : undefined;
+
+  // Live preview: shows how the stored value will be displayed
+  const targetPreview = useMemo(() => {
+    if (!selectedKpi || !targetStr) return null;
+    const raw = parseFloat(targetStr.replace(",", "."));
+    if (isNaN(raw) || !isFinite(raw)) return null;
+    const stored = selectedKpi.format === "pct" ? raw / 100 : raw;
+    return unitFormatter[selectedKpi.format as MetricUnit](stored);
+  }, [selectedKpi, targetStr]);
 
   const validate = (): FormErrors => {
     const e: FormErrors = {};
@@ -184,10 +208,12 @@ export default function MetaFormModal({ open, onClose, onSave, editMeta }: Props
     }
     setSaving(true);
     try {
+      const rawValue = parseFloat(targetStr.replace(",", "."));
+      const targetValue = selectedKpi?.format === "pct" ? rawValue / 100 : rawValue;
       await onSave({
         titulo: titulo.trim(),
         kpiId,
-        targetValue: parseFloat(targetStr.replace(",", ".")),
+        targetValue,
         deadline,
         status,
         ownerEmail,
@@ -241,18 +267,62 @@ export default function MetaFormModal({ open, onClose, onSave, editMeta }: Props
 
         {/* Valor Alvo + Prazo */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-          <Field label="Valor Alvo" hint={formatHint} error={errors.targetValue}>
-            <input
-              type="text"
-              inputMode="decimal"
-              value={targetStr}
-              onChange={(e) => setTargetStr(e.target.value)}
-              placeholder="Ex: 800000"
-              style={baseInputStyle(!!errors.targetValue)}
-              onFocus={(e) => { if (!errors.targetValue) e.target.style.borderColor = C.yellow; }}
-              onBlur={(e) => { e.target.style.borderColor = errors.targetValue ? C.red : C.inputBdr; }}
-            />
-          </Field>
+          {/* Valor Alvo — with dynamic unit label, suffix and live preview */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+            <label style={{ fontSize: 12, fontWeight: 700, color: C.textLight, letterSpacing: "0.2px" }}>
+              Valor Alvo
+              {selectedKpi && (
+                <span style={{ fontWeight: 400, color: C.textMuted, marginLeft: 5 }}>
+                  ({FORMAT_UNIT[selectedKpi.format] ?? selectedKpi.format})
+                </span>
+              )}
+            </label>
+            {/* Input with unit suffix */}
+            <div style={{ position: "relative" }}>
+              <input
+                type="text"
+                inputMode="decimal"
+                value={targetStr}
+                onChange={(e) => setTargetStr(e.target.value)}
+                placeholder={selectedKpi ? FORMAT_PLACEHOLDER[selectedKpi.format] ?? "Ex: 0" : "Selecione um KPI primeiro"}
+                style={{
+                  ...baseInputStyle(!!errors.targetValue),
+                  paddingRight: selectedKpi ? 44 : 14,
+                }}
+                onFocus={(e) => { if (!errors.targetValue) e.target.style.borderColor = C.yellow; }}
+                onBlur={(e) => { e.target.style.borderColor = errors.targetValue ? C.red : C.inputBdr; }}
+              />
+              {selectedKpi && (
+                <span
+                  style={{
+                    position: "absolute",
+                    right: 12,
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    fontSize: 12,
+                    fontWeight: 700,
+                    color: C.textMuted,
+                    pointerEvents: "none",
+                    userSelect: "none",
+                  }}
+                >
+                  {FORMAT_UNIT[selectedKpi.format]}
+                </span>
+              )}
+            </div>
+            {/* Live preview */}
+            {targetPreview && !errors.targetValue && (
+              <span style={{ fontSize: 11, color: "rgb(243,222,61)", display: "flex", alignItems: "center", gap: 4 }}>
+                <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                  <path d="M2 5h6M5.5 2.5L8 5l-2.5 2.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                será exibido como: <strong>{targetPreview}</strong>
+              </span>
+            )}
+            {errors.targetValue && (
+              <span style={{ fontSize: 11, color: C.red }}>{errors.targetValue}</span>
+            )}
+          </div>
 
           <Field label="Prazo" error={errors.deadline}>
             <input
