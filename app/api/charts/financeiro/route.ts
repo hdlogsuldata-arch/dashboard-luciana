@@ -21,11 +21,24 @@ import {
   getCtrcsByCliente,
   getKpiReceitaFrete,
 } from "@/lib/data/cliente203";
+import {
+  getAgingSeries,
+  getDespesasSeries,
+  getTopClientesSeries,
+} from "@/lib/data/neon-series";
 
 export async function GET(req: NextRequest) {
   const ref = req.nextUrl.searchParams.get("ref") ?? undefined;
 
   try {
+    // `charts` = snapshot do mês (CSV). `series` = histórico temporal (Neon).
+    // As séries são resolvidas em paralelo e cada uma é resiliente a falha.
+    const [finSeries007, finSeries012, finSeries001] = await Promise.all([
+      getDespesasSeries(),
+      getTopClientesSeries(),
+      getAgingSeries(),
+    ]);
+
     const data = {
       kpis: {
         KPI_001: getKpiSaldoTotal(ref),
@@ -46,6 +59,11 @@ export async function GET(req: NextRequest) {
         FIN_011: getReceitaByABC(ref),
         FIN_012: getTopClientesByReceita(10, ref),
         FIN_013: getCtrcsByCliente(10, ref),
+      },
+      series: {
+        FIN_001: finSeries001,
+        FIN_007: finSeries007,
+        FIN_012: finSeries012,
       },
     };
 

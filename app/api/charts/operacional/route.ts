@@ -12,11 +12,15 @@ import {
   getByUltimaOcorrencia,
   getKpiTotalFaturar,
 } from "@/lib/data/ctrc231";
+import { getOTDSeries } from "@/lib/data/neon-series";
 
 export async function GET(req: NextRequest) {
   const ref = req.nextUrl.searchParams.get("ref") ?? undefined;
 
   try {
+    // `charts` = snapshot do mês (CSV). `series` = histórico temporal (Neon).
+    const oprSeries001 = await getOTDSeries();
+
     const data = {
       kpis: {
         KPI_003: getKpiOTD(ref),
@@ -30,6 +34,9 @@ export async function GET(req: NextRequest) {
         OPR_005: getMotivoNaoEntrega(ref),
         OPR_006: getPipelineByCliente(10, ref),
         OPR_008: getByUltimaOcorrencia(ref),
+      },
+      series: {
+        OPR_001: oprSeries001,
       },
     };
 

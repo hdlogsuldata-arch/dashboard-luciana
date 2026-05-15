@@ -11,13 +11,27 @@ import { CHART_REGISTRY } from "@/lib/charts/registry";
 import type { DonutBadge } from "@/components/charts/ChartCard";
 import { unitFormatter } from "@/lib/formatter";
 import type { MetricUnit } from "@/lib/formatter";
+<<<<<<< HEAD
 import type { ChartCompareDatum, TargetLine } from "@/lib/chartTypes";
+=======
+import type { ChartCompareDatum, ChartSeries, TargetLine } from "@/lib/chartTypes";
+import type { KpiTarget } from "@/components/charts/KpiCard";
+>>>>>>> origin/naif
 import { useDashboardFilter } from "@/lib/dashboardFilters";
 
 type ApiData = {
   kpis: Record<string, number>;
   charts: Record<string, ChartCompareDatum[]>;
+  series?: Record<string, ChartSeries[]>; // histórico temporal (Neon) — só p/ charts com "line"
 };
+
+/** Linha só faz sentido com 2+ pontos no tempo; senão fica um ponto solto.
+ *  Usa a série mais densa — categorias podem faltar em alguns snapshots. */
+function lineUnavailable(series?: ChartSeries[]): boolean {
+  if (!series || series.length === 0) return true;
+  const maxPoints = Math.max(...series.map((s) => s.points?.length ?? 0));
+  return maxPoints < 2;
+}
 
 type SectionConfig = { chartIds: string[]; kpiIds: string[] };
 
@@ -127,12 +141,14 @@ export default function FinanceiroPage() {
           {(config?.chartIds ?? []).map((id) => {
             const meta = CHART_REGISTRY.find((c) => c.id === id);
             if (!meta) return null;
+            const series = data?.series?.[id];
             return (
               <ChartErrorBoundary key={id} chartId={id}>
                 <ChartCard
                   meta={meta}
                   data={data?.charts?.[id] ?? null}
-                  lineDisabled
+                  series={series}
+                  lineDisabled={lineUnavailable(series)}
                   targetLine={chartTargets[id]}
                   donutBadge={donutBadges[id]}
                 />
