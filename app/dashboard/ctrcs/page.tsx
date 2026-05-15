@@ -18,16 +18,23 @@ function formatCurrency(value: number | string | null): string {
 }
 
 export default async function CtrcsPage() {
-  const rows = (await sql`
-    SELECT numero_ctrc, data_emissao_raw, valor_frete, remetente_nome, destinatario_nome
-    FROM v_ctrc_emitidos
-    WHERE extracted_at = (
-      SELECT MAX(extracted_at) FROM ssw_extractions
-      WHERE report_pasta = 'ctrc' AND report_codigo = 174
-    )
-    ORDER BY data_emissao_raw DESC NULLS LAST
-    LIMIT 100
-  `) as CtrcRow[];
+  // Resiliente: falha de query (Neon frio, view com dado sujo) renderiza o estado
+  // vazio em vez de derrubar o prerender/build inteiro.
+  let rows: CtrcRow[] = [];
+  try {
+    rows = (await sql`
+      SELECT numero_ctrc, data_emissao_raw, valor_frete, remetente_nome, destinatario_nome
+      FROM v_ctrc_emitidos
+      WHERE extracted_at = (
+        SELECT MAX(extracted_at) FROM ssw_extractions
+        WHERE report_pasta = 'ctrc' AND report_codigo = 174
+      )
+      ORDER BY data_emissao_raw DESC NULLS LAST
+      LIMIT 100
+    `) as CtrcRow[];
+  } catch (err) {
+    console.error("[dashboard/ctrcs] falha ao consultar v_ctrc_emitidos:", err);
+  }
 
   return (
     <main className="p-6">
