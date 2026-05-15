@@ -11,12 +11,7 @@ import { CHART_REGISTRY } from "@/lib/charts/registry";
 import type { DonutBadge } from "@/components/charts/ChartCard";
 import { unitFormatter } from "@/lib/formatter";
 import type { MetricUnit } from "@/lib/formatter";
-<<<<<<< HEAD
-import type { ChartCompareDatum, TargetLine } from "@/lib/chartTypes";
-=======
 import type { ChartCompareDatum, ChartSeries, TargetLine } from "@/lib/chartTypes";
-import type { KpiTarget } from "@/components/charts/KpiCard";
->>>>>>> origin/naif
 import { useDashboardFilter } from "@/lib/dashboardFilters";
 
 type ApiData = {
