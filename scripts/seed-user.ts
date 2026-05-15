@@ -3,7 +3,7 @@
  * Uso: npx tsx scripts/seed-user.ts
  */
 import "dotenv/config";
-import { PrismaClient } from "../app/generated/prisma/client";
+import { PrismaClient } from "@prisma/client";
 import { hash } from "bcryptjs";
 
 const prisma = new PrismaClient();
