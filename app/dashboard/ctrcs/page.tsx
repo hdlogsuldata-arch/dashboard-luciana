@@ -1,6 +1,6 @@
 import { sql } from '@/lib/db';
 
-export const revalidate = 604800; // 7 dias — bate com o cron semanal do ETL
+export const revalidate = 86400; // 1 dia — bate com o cron diário do ETL
 
 type CtrcRow = {
   numero_ctrc: string | null;
