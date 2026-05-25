@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { ChartRenderer } from "./ChartRenderer";
 import ChartTypeToggle from "./ChartTypeToggle";
+import SeriesFilterButton from "./SeriesFilterButton";
 import type { ChartType, ChartCompareDatum, ChartSeries, TargetLine } from "../../lib/chartTypes";
 import type { ChartMetadata } from "../../lib/charts/types";
 import type { DonutBadge } from "./ChartCard";
@@ -22,6 +23,12 @@ type Props = {
   lineDisabled?: boolean;
   targetLine?: TargetLine;
   donutBadge?: DonutBadge;
+  // Filtro de séries (opcional — só presente quando há > 4 itens)
+  allKeys?: string[];
+  hiddenKeys?: Set<string>;
+  onToggleKey?: (key: string) => void;
+  onSelectAll?: () => void;
+  onDeselectAll?: () => void;
 };
 
 export default function ChartFullscreen({
@@ -35,6 +42,11 @@ export default function ChartFullscreen({
   lineDisabled = true,
   targetLine,
   donutBadge,
+  allKeys,
+  hiddenKeys,
+  onToggleKey,
+  onSelectAll,
+  onDeselectAll,
 }: Props) {
   // ESC to close
   const handleKey = useCallback(
@@ -51,6 +63,11 @@ export default function ChartFullscreen({
       document.body.style.overflow = "";
     };
   }, [handleKey]);
+
+  const showFilter =
+    allKeys && allKeys.length > 4 &&
+    hiddenKeys !== undefined &&
+    onToggleKey && onSelectAll && onDeselectAll;
 
   const content = (
     <div
@@ -119,7 +136,7 @@ export default function ChartFullscreen({
           </div>
         </div>
 
-        {/* Right: toggle + close */}
+        {/* Right: toggle + filtro + close */}
         <div style={{ display: "flex", alignItems: "center", gap: 16, flexShrink: 0 }}>
           {meta.supportedTypes.length > 1 && (
             <ChartTypeToggle
@@ -127,6 +144,18 @@ export default function ChartFullscreen({
               value={activeType}
               onChange={onChangeType}
               lineDisabled={lineDisabled}
+            />
+          )}
+
+          {/* Botão de filtro na tela cheia */}
+          {showFilter && (
+            <SeriesFilterButton
+              allKeys={allKeys!}
+              hiddenKeys={hiddenKeys!}
+              onToggle={onToggleKey!}
+              onSelectAll={onSelectAll!}
+              onDeselectAll={onDeselectAll!}
+              scale={1.25}
             />
           )}
 

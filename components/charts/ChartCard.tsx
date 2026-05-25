@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Maximize2 } from "lucide-react";
 import type { ChartType, ChartCompareDatum, ChartSeries, TargetLine } from "../../lib/chartTypes";
 import type { ChartMetadata } from "../../lib/charts/types";
 import { ChartRenderer } from "./ChartRenderer";
 import ChartTypeToggle from "./ChartTypeToggle";
 import ChartFullscreen from "./ChartFullscreen";
+import SeriesFilterButton from "./SeriesFilterButton";
 import { unitFormatter } from "../../lib/formatter";
 import { useDashboardFilter } from "../../lib/dashboardFilters";
 
@@ -37,9 +38,43 @@ export default function ChartCard({
 }: Props) {
   const [activeType, setActiveType] = useState<ChartType>(meta.defaultType);
   const [fullscreen, setFullscreen] = useState(false);
+  const [hiddenKeys, setHiddenKeys] = useState<Set<string>>(new Set());
   const { ref } = useDashboardFilter();
 
   const showDonutBadge = donutBadge && activeType === "donut";
+
+  // ── Chaves disponíveis para filtro (dependem do tipo ativo) ──────────────
+  const allKeys = useMemo(() => {
+    if (activeType === "line") return (series ?? []).map((s) => s.name);
+    return (data ?? []).map((d) => d.name);
+  }, [activeType, series, data]);
+
+  // Exibe botão de filtro somente quando há mais de 4 itens
+  const showFilter = allKeys.length > 4;
+
+  // ── Dados filtrados ──────────────────────────────────────────────────────
+  const filteredData = useMemo(() => {
+    if (!data || hiddenKeys.size === 0) return data;
+    return data.filter((d) => !hiddenKeys.has(d.name));
+  }, [data, hiddenKeys]);
+
+  const filteredSeries = useMemo(() => {
+    if (!series || hiddenKeys.size === 0) return series;
+    return series.filter((s) => !hiddenKeys.has(s.name));
+  }, [series, hiddenKeys]);
+
+  // ── Handlers de filtro ───────────────────────────────────────────────────
+  const handleToggleKey = (key: string) => {
+    setHiddenKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
+  const handleSelectAll = () => setHiddenKeys(new Set());
+  const handleDeselectAll = () => setHiddenKeys(new Set(allKeys));
 
   return (
     <>
@@ -108,6 +143,7 @@ export default function ChartCard({
             </div>
           </div>
 
+          {/* Controles: tipo + filtro + tela cheia */}
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
             {meta.supportedTypes.length > 1 && (
               <ChartTypeToggle
@@ -115,6 +151,17 @@ export default function ChartCard({
                 value={activeType}
                 onChange={setActiveType}
                 lineDisabled={lineDisabled}
+              />
+            )}
+
+            {/* Botão de filtro — só aparece quando há mais de 4 dados */}
+            {showFilter && (
+              <SeriesFilterButton
+                allKeys={allKeys}
+                hiddenKeys={hiddenKeys}
+                onToggle={handleToggleKey}
+                onSelectAll={handleSelectAll}
+                onDeselectAll={handleDeselectAll}
               />
             )}
 
@@ -149,11 +196,11 @@ export default function ChartCard({
           </div>
         </div>
 
-        {/* Chart */}
+        {/* Chart — usa dados já filtrados */}
         <ChartRenderer
           type={activeType}
-          compareData={data ?? []}
-          series={series ?? []}
+          compareData={filteredData ?? []}
+          series={filteredSeries ?? []}
           loading={data === null}
           height={height}
           metricFormat={unitFormatter[meta.metricFormat]}
@@ -164,8 +211,8 @@ export default function ChartCard({
       {fullscreen && (
         <ChartFullscreen
           meta={meta}
-          data={data}
-          series={series}
+          data={filteredData}
+          series={filteredSeries}
           activeType={activeType}
           onChangeType={setActiveType}
           onClose={() => setFullscreen(false)}
@@ -173,6 +220,11 @@ export default function ChartCard({
           lineDisabled={lineDisabled}
           targetLine={targetLine}
           donutBadge={donutBadge}
+          allKeys={showFilter ? allKeys : undefined}
+          hiddenKeys={hiddenKeys}
+          onToggleKey={handleToggleKey}
+          onSelectAll={handleSelectAll}
+          onDeselectAll={handleDeselectAll}
         />
       )}
     </>
