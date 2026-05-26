@@ -53,6 +53,11 @@ function displayName(raw: any): string {
   return s;
 }
 
+/** Trunca o label para exibição na legenda; o nome completo fica no title para hover. */
+function truncateLegendLabel(label: string, maxLen = 12): string {
+  return label.length > maxLen ? label.slice(0, maxLen) + "…" : label;
+}
+
 function computeTopWithHeadroom(dataMax: number, targetValue: number): number {
   return Math.max(dataMax, targetValue) * 1.18;
 }
@@ -220,7 +225,7 @@ export function ChartRenderer({
             return (
               <div key={`${rawValue}-${dataKey}`} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: fs(11), color: THEME.textMuted }}>
                 <span style={{ display: "inline-block", width: 10, height: 10, borderRadius: 2, background: item?.color ?? THEME.textMuted }} />
-                <span>{label}</span>
+                <span title={label}>{truncateLegendLabel(label)}</span>
               </div>
             );
           })}
@@ -344,8 +349,9 @@ export function ChartRenderer({
                 const name = displayName(value);
                 const found = donutData.find((d) => d.name === name);
                 const v = found ? safeNum(found.value) : 0;
+                const displayLabel = truncateLegendLabel(name);
                 return (
-                  <span style={{ color: THEME.textMuted }}>{`${name} — ${metricFormat(v)}`}</span>
+                  <span title={name} style={{ color: THEME.textMuted }}>{`${displayLabel} — ${metricFormat(v)}`}</span>
                 );
               }}
             />

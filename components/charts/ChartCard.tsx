@@ -106,7 +106,7 @@ export default function ChartCard({
               <h3
                 style={{
                   margin: 0,
-                  fontSize: 14,
+                  fontSize: 16,
                   fontWeight: 600,
                   color: "#FFFFFF",
                   lineHeight: 1.3,
