@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Suspense } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { DashboardFilterContext, type GlobalDateBounds } from "@/lib/dashboardFilters";
 import {
@@ -46,7 +46,7 @@ function rangeToStorage(r: DateRange) {
   );
 }
 
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+function DashboardFilterInner({ children }: { children: React.ReactNode }) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
@@ -94,5 +94,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     <DashboardFilterContext.Provider value={{ range, setRange, setPreset, globalRange }}>
       {children}
     </DashboardFilterContext.Provider>
+  );
+}
+
+// useSearchParams() exige um boundary de Suspense acima quando a rota é
+// prerenderizada (senão o build estático falha com CSR bailout). O layout
+// envolve o componente que lê os search params em <Suspense>.
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <Suspense fallback={null}>
+      <DashboardFilterInner>{children}</DashboardFilterInner>
+    </Suspense>
   );
 }
