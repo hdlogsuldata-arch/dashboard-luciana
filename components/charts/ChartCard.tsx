@@ -9,7 +9,7 @@ import ChartTypeToggle from "./ChartTypeToggle";
 import ChartFullscreen from "./ChartFullscreen";
 import SeriesFilterButton from "./SeriesFilterButton";
 import { unitFormatter } from "../../lib/formatter";
-import { useDashboardFilter } from "../../lib/dashboardFilters";
+import { useDashboardFilter, formatDateRangeLabel } from "../../lib/dashboardFilters";
 
 export interface DonutBadge {
   op: "≥" | "≤";
@@ -39,7 +39,7 @@ export default function ChartCard({
   const [activeType, setActiveType] = useState<ChartType>(meta.defaultType);
   const [fullscreen, setFullscreen] = useState(false);
   const [hiddenKeys, setHiddenKeys] = useState<Set<string>>(new Set());
-  const { ref } = useDashboardFilter();
+  const { range } = useDashboardFilter();
 
   const showDonutBadge = donutBadge && activeType === "donut";
 
@@ -216,7 +216,7 @@ export default function ChartCard({
           activeType={activeType}
           onChangeType={setActiveType}
           onClose={() => setFullscreen(false)}
-          ref_={ref}
+          rangeLabel={formatDateRangeLabel(range)}
           lineDisabled={lineDisabled}
           targetLine={targetLine}
           donutBadge={donutBadge}

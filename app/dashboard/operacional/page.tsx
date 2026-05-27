@@ -13,6 +13,7 @@ import { unitFormatter } from "@/lib/formatter";
 import type { MetricUnit } from "@/lib/formatter";
 import type { ChartCompareDatum, ChartSeries, TargetLine } from "@/lib/chartTypes";
 import { useDashboardFilter } from "@/lib/dashboardFilters";
+import { rangeToQuery } from "@/lib/data/dateRange";
 
 type ApiData = {
   kpis: Record<string, number>;
@@ -41,7 +42,7 @@ interface ApiMeta {
 }
 
 export default function OperacionalPage() {
-  const { ref } = useDashboardFilter();
+  const { range } = useDashboardFilter();
   const [config, setConfig] = useState<SectionConfig | null>(null);
   const [data, setData] = useState<ApiData | null>(null);
   const [error, setError] = useState(false);
@@ -57,11 +58,11 @@ export default function OperacionalPage() {
   useEffect(() => {
     setData(null);
     setError(false);
-    fetch(`/api/charts/operacional?ref=${encodeURIComponent(ref)}`)
+    fetch(`/api/charts/operacional?${rangeToQuery(range)}`)
       .then((r) => r.json())
       .then(setData)
       .catch(() => setError(true));
-  }, [ref]);
+  }, [range.startDate.getTime(), range.endDate.getTime()]);
 
   useEffect(() => {
     fetch("/api/metas?section=operacional")

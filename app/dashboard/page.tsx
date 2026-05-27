@@ -10,6 +10,7 @@ import { KPI_REGISTRY, CHART_REGISTRY } from "@/lib/charts/registry";
 import type { KpiId } from "@/lib/charts/registry";
 import type { ChartCompareDatum } from "@/lib/chartTypes";
 import { useDashboardFilter } from "@/lib/dashboardFilters";
+import { rangeToQuery } from "@/lib/data/dateRange";
 
 type KpiSlot = { position: number; kpiId: string };
 
@@ -23,7 +24,7 @@ type Configs = Record<"financeiro" | "operacional" | "frota", SectionConfig>;
 
 export default function DashboardHome() {
   const router = useRouter();
-  const { ref } = useDashboardFilter();
+  const { range } = useDashboardFilter();
 
   const [kpiSlots, setKpiSlots] = useState<KpiSlot[] | null>(null);
   const [configs, setConfigs]   = useState<Configs | null>(null);
@@ -48,13 +49,13 @@ export default function DashboardHome() {
       .catch(() => {});
   }, []);
 
-  // Chart data: refetch on every ref change
+  // Chart data: refetch on every range change
   useEffect(() => {
     setFinData(null);
     setOprData(null);
     setFltData(null);
 
-    const q = `?ref=${encodeURIComponent(ref)}`;
+    const q = `?${rangeToQuery(range)}`;
     Promise.all([
       fetch("/api/kpis/me").then((r) => r.json()).catch(() => ({ slots: [] })),
       fetch(`/api/charts/financeiro${q}`).then((r) => r.json()).catch(() => null),
@@ -66,7 +67,7 @@ export default function DashboardHome() {
       setOprData(opr);
       setFltData(flt);
     });
-  }, [ref]);
+  }, [range.startDate.getTime(), range.endDate.getTime()]);
 
   function getKpiValue(kpiId: string): number | null {
     const meta = KPI_REGISTRY.find((k) => k.id === kpiId);

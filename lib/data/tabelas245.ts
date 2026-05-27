@@ -1,28 +1,34 @@
 /**
- * Agregações de Frota — tabelas_245.csv
- * (Relação de veículos cadastrados)
+ * Agregações de Frota — ssw_extractions (tabelas/245).
+ * (Relação de veículos cadastrados — snapshot estático sem campo de data útil)
  *
- * Colunas relevantes:
+ * Colunas relevantes no payload:
  *   PLACA, TIPO, RELACIONAMENTO, DISPONIVEL, MARCA, MODELO,
  *   ANO, CARROCERIA, CAPACIDADE, COMBUSTIVEL, RASTREADO,
  *   KM ODOMETRO, ULT MVTO, VIGENCIA SEGURO
+ *
+ * Sem filtro de data: usa sempre o snapshot mais recente. A assinatura recebe
+ * `DateRange` apenas para uniformidade com os outros parsers, mas ignora.
  */
 
-import { readCsvAuto, parseBRL } from "./csvParser";
+import { getLatestPayloads } from "./ssw";
+import { parseBRL } from "./csvParser";
 import type { ChartCompareDatum } from "../chartTypes";
+import type { DateRange } from "./dateRange";
 
-const FILE = "tabelas_245.csv";
+const PASTA = "tabelas";
+const CODIGO = 245;
 
-function getRows(ref?: string) {
-  return readCsvAuto(FILE, ref).rows;
+async function getRows(_range?: DateRange) {
+  return getLatestPayloads(PASTA, CODIGO);
 }
 
 // ---------------------------------------------------------------------------
 // FLT_001 — Composição da Frota por Tipo
 // ---------------------------------------------------------------------------
 
-export function getComposicaoByTipo(ref?: string): ChartCompareDatum[] {
-  const rows = getRows(ref);
+export async function getComposicaoByTipo(range?: DateRange): Promise<ChartCompareDatum[]> {
+  const rows = await getRows(range);
   const byTipo: Record<string, number> = {};
 
   for (const r of rows) {
@@ -39,8 +45,8 @@ export function getComposicaoByTipo(ref?: string): ChartCompareDatum[] {
 // FLT_002 — Frota Própria vs Terceiros (RELACIONAMENTO)
 // ---------------------------------------------------------------------------
 
-export function getRelacionamento(ref?: string): ChartCompareDatum[] {
-  const rows = getRows(ref);
+export async function getRelacionamento(range?: DateRange): Promise<ChartCompareDatum[]> {
+  const rows = await getRows(range);
   const byRel: Record<string, number> = {};
 
   for (const r of rows) {
@@ -57,8 +63,8 @@ export function getRelacionamento(ref?: string): ChartCompareDatum[] {
 // FLT_003 — Distribuição por Fabricante
 // ---------------------------------------------------------------------------
 
-export function getByFabricante(ref?: string): ChartCompareDatum[] {
-  const rows = getRows(ref);
+export async function getByFabricante(range?: DateRange): Promise<ChartCompareDatum[]> {
+  const rows = await getRows(range);
   const byMarca: Record<string, number> = {};
 
   for (const r of rows) {
@@ -75,14 +81,13 @@ export function getByFabricante(ref?: string): ChartCompareDatum[] {
 // FLT_004 — Idade da Frota (por ano de fabricação)
 // ---------------------------------------------------------------------------
 
-export function getIdadeFrota(ref?: string): ChartCompareDatum[] {
-  const rows = getRows(ref);
+export async function getIdadeFrota(range?: DateRange): Promise<ChartCompareDatum[]> {
+  const rows = await getRows(range);
   const byAno: Record<string, number> = {};
 
   for (const r of rows) {
     const raw = r["ANO"]?.trim();
     if (!raw) { byAno["Sem ano"] = (byAno["Sem ano"] ?? 0) + 1; continue; }
-    // Expandir ano de 2 dígitos: ≤ ano atual (2 dígitos) → 2000s, senão → 1900s
     const n = parseInt(raw, 10);
     const currentYY = new Date().getFullYear() % 100;
     const ano = raw.length === 2
@@ -104,8 +109,8 @@ export function getIdadeFrota(ref?: string): ChartCompareDatum[] {
 // FLT_005 — Frota por Combustível
 // ---------------------------------------------------------------------------
 
-export function getByCombustivel(ref?: string): ChartCompareDatum[] {
-  const rows = getRows(ref);
+export async function getByCombustivel(range?: DateRange): Promise<ChartCompareDatum[]> {
+  const rows = await getRows(range);
   const byComb: Record<string, number> = {};
 
   for (const r of rows) {
@@ -122,12 +127,11 @@ export function getByCombustivel(ref?: string): ChartCompareDatum[] {
 // FLT_006 — Localização Atual (último movimento por unidade)
 // ---------------------------------------------------------------------------
 
-export function getLocalizacaoAtual(ref?: string): ChartCompareDatum[] {
-  const rows = getRows(ref);
+export async function getLocalizacaoAtual(range?: DateRange): Promise<ChartCompareDatum[]> {
+  const rows = await getRows(range);
   const byLocal: Record<string, number> = {};
 
   for (const r of rows) {
-    // ULT MVTO formato real: "JOI 07/04/26" — extrair apenas o código da unidade (1º token)
     const raw = r["ULT MVTO"]?.trim() || "";
     const local = raw.split(/\s+/)[0] || "Não registrado";
     byLocal[local] = (byLocal[local] ?? 0) + 1;
@@ -142,13 +146,12 @@ export function getLocalizacaoAtual(ref?: string): ChartCompareDatum[] {
 // FLT_007 — Taxa de Rastreamento
 // ---------------------------------------------------------------------------
 
-export function getRastreamento(ref?: string): ChartCompareDatum[] {
-  const rows = getRows(ref);
+export async function getRastreamento(range?: DateRange): Promise<ChartCompareDatum[]> {
+  const rows = await getRows(range);
   let rastreado = 0;
   let naoRastreado = 0;
 
   for (const r of rows) {
-    // Valores reais: "1", "2" (qtd de rastreadores) = rastreado; "N" ou vazio = não rastreado
     const val = r["RASTREADO"]?.trim().toUpperCase();
     const isTracked = val !== "" && val !== "N" && val !== "0";
     if (isTracked) rastreado++;
@@ -165,25 +168,21 @@ export function getRastreamento(ref?: string): ChartCompareDatum[] {
 // FLT_008 — Vencimento de Seguros por Mês
 // ---------------------------------------------------------------------------
 
-export function getVencimentoSeguros(ref?: string): ChartCompareDatum[] {
-  const rows = getRows(ref);
+export async function getVencimentoSeguros(range?: DateRange): Promise<ChartCompareDatum[]> {
+  const rows = await getRows(range);
   const byMes: Record<string, number> = {};
 
   for (const r of rows) {
     const vigencia = r["VIGENCIA SEGURO"]?.trim();
     if (!vigencia) continue;
 
-    // Formato real: "DD/MM/YY A DD/MM/YY" (intervalo com "A")
-    // Extrair a data de FIM (segunda parte) — é o vencimento real
     const partes = vigencia.split(/\s+A\s+/i);
     const dataFim = (partes.length === 2 ? partes[1] : partes[0]).trim();
 
-    // Agora parsear DD/MM/YY ou DD/MM/AAAA
     const segs = dataFim.split("/");
     if (segs.length !== 3) continue;
 
     const [, mes, anoRaw] = segs;
-    // Converter ano de 2 dígitos: "20" → "2020", "25" → "2025"
     const ano = anoRaw.length === 2 ? `20${anoRaw}` : anoRaw;
     const label = `${mes.padStart(2, "0")}/${ano}`;
 
@@ -204,8 +203,8 @@ export function getVencimentoSeguros(ref?: string): ChartCompareDatum[] {
 // FLT_009 — Capacidade Total por Tipo (soma de m³)
 // ---------------------------------------------------------------------------
 
-export function getCapacidadeByTipo(ref?: string): ChartCompareDatum[] {
-  const rows = getRows(ref);
+export async function getCapacidadeByTipo(range?: DateRange): Promise<ChartCompareDatum[]> {
+  const rows = await getRows(range);
   const byTipo: Record<string, number> = {};
 
   for (const r of rows) {
@@ -223,8 +222,8 @@ export function getCapacidadeByTipo(ref?: string): ChartCompareDatum[] {
 // FLT_010 — Hodômetro Médio por Tipo
 // ---------------------------------------------------------------------------
 
-export function getOdometroMedioByTipo(ref?: string): ChartCompareDatum[] {
-  const rows = getRows(ref);
+export async function getOdometroMedioByTipo(range?: DateRange): Promise<ChartCompareDatum[]> {
+  const rows = await getRows(range);
   const sums: Record<string, { total: number; count: number }> = {};
 
   for (const r of rows) {
@@ -248,16 +247,17 @@ export function getOdometroMedioByTipo(ref?: string): ChartCompareDatum[] {
 // KPI_006 — Total da Frota (quantidade)
 // ---------------------------------------------------------------------------
 
-export function getKpiTotalFrota(ref?: string): number {
-  return getRows(ref).length;
+export async function getKpiTotalFrota(range?: DateRange): Promise<number> {
+  const rows = await getRows(range);
+  return rows.length;
 }
 
 // ---------------------------------------------------------------------------
 // KPI_007 — Taxa de Rastreamento (fração 0-1)
 // ---------------------------------------------------------------------------
 
-export function getKpiTaxaRastreamento(ref?: string): number {
-  const rows = getRows(ref);
+export async function getKpiTaxaRastreamento(range?: DateRange): Promise<number> {
+  const rows = await getRows(range);
   if (rows.length === 0) return 0;
   const rastreados = rows.filter((r) => {
     const val = r["RASTREADO"]?.trim().toUpperCase();

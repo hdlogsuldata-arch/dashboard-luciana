@@ -1,20 +1,26 @@
 /**
- * Agregações de Contas a Receber — caixa_240.csv
+ * Agregações de Contas a Receber — ssw_extractions (caixa/240).
  * (Faturas vencidas / inadimplência)
  *
- * Colunas relevantes:
+ * Colunas relevantes no payload:
  *   Fatura, Emissao, CNPJ pagador, Nome pagador, ClienteABC,
  *   Cidade pagador, UF pagador, UnidResp, Vendedor, Banco,
  *   Valor, Vencimento, DiasAtraso, Saldo
+ *
+ * Campo de data canônico: `Emissao` (dd/mm/yy).
  */
 
-import { readCsvAuto, parseBRL, parseIntBR } from "./csvParser";
+import { getLatestPayloadsInRange } from "./ssw";
+import { parseBRL, parseIntBR } from "./csvParser";
 import type { ChartCompareDatum } from "../chartTypes";
+import type { DateRange } from "./dateRange";
 
-const FILE = "caixa_240.csv";
+const PASTA = "caixa";
+const CODIGO = 240;
+const DATE_FIELD = "Emissao";
 
-function getRows(ref?: string) {
-  return readCsvAuto(FILE, ref).rows;
+async function getRows(range: DateRange) {
+  return getLatestPayloadsInRange(PASTA, CODIGO, DATE_FIELD, range);
 }
 
 // ---------------------------------------------------------------------------
@@ -29,8 +35,8 @@ const AGING_BUCKETS = [
   { label: "> 180 dias",  min: 181, max: Infinity },
 ];
 
-export function getAgingBuckets(ref?: string): ChartCompareDatum[] {
-  const rows = getRows(ref);
+export async function getAgingBuckets(range: DateRange): Promise<ChartCompareDatum[]> {
+  const rows = await getRows(range);
   const totals: Record<string, number> = {};
   AGING_BUCKETS.forEach((b) => (totals[b.label] = 0));
 
@@ -48,8 +54,8 @@ export function getAgingBuckets(ref?: string): ChartCompareDatum[] {
 // FIN_002 — Top N Devedores
 // ---------------------------------------------------------------------------
 
-export function getTopDebtors(n = 10, ref?: string): ChartCompareDatum[] {
-  const rows = getRows(ref);
+export async function getTopDebtors(n: number, range: DateRange): Promise<ChartCompareDatum[]> {
+  const rows = await getRows(range);
   const byClient: Record<string, number> = {};
 
   for (const r of rows) {
@@ -68,8 +74,8 @@ export function getTopDebtors(n = 10, ref?: string): ChartCompareDatum[] {
 // FIN_003 — Por Classificação ABC
 // ---------------------------------------------------------------------------
 
-export function getByABC(ref?: string): ChartCompareDatum[] {
-  const rows = getRows(ref);
+export async function getByABC(range: DateRange): Promise<ChartCompareDatum[]> {
+  const rows = await getRows(range);
   const byABC: Record<string, number> = {};
 
   for (const r of rows) {
@@ -87,8 +93,8 @@ export function getByABC(ref?: string): ChartCompareDatum[] {
 // FIN_004 — Por Unidade Responsável
 // ---------------------------------------------------------------------------
 
-export function getByUnidade(ref?: string): ChartCompareDatum[] {
-  const rows = getRows(ref);
+export async function getByUnidade(range: DateRange): Promise<ChartCompareDatum[]> {
+  const rows = await getRows(range);
   const byUnid: Record<string, number> = {};
 
   for (const r of rows) {
@@ -106,8 +112,8 @@ export function getByUnidade(ref?: string): ChartCompareDatum[] {
 // FIN_005 — Por Estado (UF)
 // ---------------------------------------------------------------------------
 
-export function getByUF(ref?: string): ChartCompareDatum[] {
-  const rows = getRows(ref);
+export async function getByUF(range: DateRange): Promise<ChartCompareDatum[]> {
+  const rows = await getRows(range);
   const byUF: Record<string, number> = {};
 
   for (const r of rows) {
@@ -125,8 +131,8 @@ export function getByUF(ref?: string): ChartCompareDatum[] {
 // FIN_006 — Por Banco/Carteira
 // ---------------------------------------------------------------------------
 
-export function getByBanco(ref?: string): ChartCompareDatum[] {
-  const rows = getRows(ref);
+export async function getByBanco(range: DateRange): Promise<ChartCompareDatum[]> {
+  const rows = await getRows(range);
   const byBanco: Record<string, number> = {};
 
   for (const r of rows) {
@@ -144,8 +150,8 @@ export function getByBanco(ref?: string): ChartCompareDatum[] {
 // KPI_001 — Saldo Total Vencido
 // ---------------------------------------------------------------------------
 
-export function getKpiSaldoTotal(ref?: string): number {
-  const rows = getRows(ref);
+export async function getKpiSaldoTotal(range: DateRange): Promise<number> {
+  const rows = await getRows(range);
   return rows.reduce((sum, r) => sum + parseBRL(r["Saldo"] ?? "0"), 0);
 }
 
@@ -153,8 +159,8 @@ export function getKpiSaldoTotal(ref?: string): number {
 // KPI_002 — Prazo Médio de Atraso (dias)
 // ---------------------------------------------------------------------------
 
-export function getKpiPrazoMedio(ref?: string): number {
-  const rows = getRows(ref);
+export async function getKpiPrazoMedio(range: DateRange): Promise<number> {
+  const rows = await getRows(range);
   if (rows.length === 0) return 0;
   const total = rows.reduce((sum, r) => sum + parseIntBR(r["DiasAtraso"] ?? "0"), 0);
   return Math.round(total / rows.length);

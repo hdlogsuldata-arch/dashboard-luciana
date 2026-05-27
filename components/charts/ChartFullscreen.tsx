@@ -10,7 +10,6 @@ import type { ChartType, ChartCompareDatum, ChartSeries, TargetLine } from "../.
 import type { ChartMetadata } from "../../lib/charts/types";
 import type { DonutBadge } from "./ChartCard";
 import { unitFormatter } from "../../lib/formatter";
-import { formatMonthLabel } from "../../lib/dashboardFilters";
 
 type Props = {
   meta: ChartMetadata;
@@ -19,7 +18,7 @@ type Props = {
   activeType: ChartType;
   onChangeType: (t: ChartType) => void;
   onClose: () => void;
-  ref_: string;
+  rangeLabel: string;
   lineDisabled?: boolean;
   targetLine?: TargetLine;
   donutBadge?: DonutBadge;
@@ -38,7 +37,7 @@ export default function ChartFullscreen({
   activeType,
   onChangeType,
   onClose,
-  ref_,
+  rangeLabel,
   lineDisabled = true,
   targetLine,
   donutBadge,
@@ -95,7 +94,7 @@ export default function ChartFullscreen({
         {/* Left: ID + title */}
         <div style={{ minWidth: 0 }}>
           <p style={{ margin: 0, fontSize: 13, color: "#646C7F", fontWeight: 500 }}>
-            {meta.id} · {formatMonthLabel(ref_)}
+            {meta.id} · {rangeLabel}
           </p>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 4, flexWrap: "wrap" }}>
             <h2

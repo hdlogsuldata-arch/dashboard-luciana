@@ -1,8 +1,8 @@
 /**
- * Agregações de Performance de Entregas — cliente_017.csv
+ * Agregações de Performance de Entregas — ssw_extractions (cliente/17).
  * (CTRCs entregues e sua performance)
  *
- * Colunas relevantes:
+ * Colunas relevantes no payload:
  *   CTRC, TIPO DOCUMENTO, NF, DATA AUTORIZACAO,
  *   CNPJ REMETENTE, REMETENTE, CNPJ PAGADOR, PAGADOR, ABC,
  *   CNPJ DESTINATARIO, DESTINATARIO, CIDADE DESTINO, UF DESTINO,
@@ -11,15 +11,20 @@
  *
  * PERFORMANCE: número de dias (negativo = antecipado, positivo = atrasado, 0 = no prazo)
  * RESP CLIENTE: "SIM" se o atraso é responsabilidade do cliente, "NAO" se da transportadora
+ *
+ * Campo de data canônico: `DATA AUTORIZACAO` (dd/mm/yy).
  */
 
-import { readCsvAuto } from "./csvParser";
+import { getLatestPayloadsInRange } from "./ssw";
 import type { ChartCompareDatum } from "../chartTypes";
+import type { DateRange } from "./dateRange";
 
-const FILE = "cliente_017.csv";
+const PASTA = "cliente";
+const CODIGO = 17;
+const DATE_FIELD = "DATA AUTORIZACAO";
 
-function getRows(ref?: string) {
-  return readCsvAuto(FILE, ref).rows;
+async function getRows(range: DateRange) {
+  return getLatestPayloadsInRange(PASTA, CODIGO, DATE_FIELD, range);
 }
 
 function parsePerformance(s: string): number {
@@ -31,8 +36,8 @@ function parsePerformance(s: string): number {
 // OPR_001 — On-Time Delivery Rate
 // ---------------------------------------------------------------------------
 
-export function getOTDRate(ref?: string): ChartCompareDatum[] {
-  const rows = getRows(ref);
+export async function getOTDRate(range: DateRange): Promise<ChartCompareDatum[]> {
+  const rows = await getRows(range);
   let noPrazo = 0;
   let antecipado = 0;
   let atrasado = 0;
@@ -55,8 +60,8 @@ export function getOTDRate(ref?: string): ChartCompareDatum[] {
 // OPR_002 — Distribuição de Performance (histograma por faixas de dias)
 // ---------------------------------------------------------------------------
 
-export function getPerformanceDistribution(ref?: string): ChartCompareDatum[] {
-  const rows = getRows(ref);
+export async function getPerformanceDistribution(range: DateRange): Promise<ChartCompareDatum[]> {
+  const rows = await getRows(range);
   const buckets: Record<string, number> = {
     "≤ -3 dias": 0,
     "-2 dias": 0,
@@ -85,8 +90,8 @@ export function getPerformanceDistribution(ref?: string): ChartCompareDatum[] {
 // OPR_003 — Performance por Cliente (média de dias por pagador)
 // ---------------------------------------------------------------------------
 
-export function getPerformanceByCliente(n = 15, ref?: string): ChartCompareDatum[] {
-  const rows = getRows(ref);
+export async function getPerformanceByCliente(n: number, range: DateRange): Promise<ChartCompareDatum[]> {
+  const rows = await getRows(range);
   const sums: Record<string, { total: number; count: number }> = {};
 
   for (const r of rows) {
@@ -102,7 +107,7 @@ export function getPerformanceByCliente(n = 15, ref?: string): ChartCompareDatum
       name,
       value: parseFloat((total / count).toFixed(1)),
     }))
-    .sort((a, b) => b.value - a.value) // mais atrasados primeiro
+    .sort((a, b) => b.value - a.value)
     .slice(0, n);
 }
 
@@ -110,8 +115,8 @@ export function getPerformanceByCliente(n = 15, ref?: string): ChartCompareDatum
 // OPR_004 — Performance por Estado de Destino
 // ---------------------------------------------------------------------------
 
-export function getPerformanceByUF(ref?: string): ChartCompareDatum[] {
-  const rows = getRows(ref);
+export async function getPerformanceByUF(range: DateRange): Promise<ChartCompareDatum[]> {
+  const rows = await getRows(range);
   const sums: Record<string, { total: number; count: number }> = {};
 
   for (const r of rows) {
@@ -134,14 +139,14 @@ export function getPerformanceByUF(ref?: string): ChartCompareDatum[] {
 // OPR_005 — Motivo de Não Entrega (responsabilidade)
 // ---------------------------------------------------------------------------
 
-export function getMotivoNaoEntrega(ref?: string): ChartCompareDatum[] {
-  const rows = getRows(ref);
+export async function getMotivoNaoEntrega(range: DateRange): Promise<ChartCompareDatum[]> {
+  const rows = await getRows(range);
   let respCliente = 0;
   let respTransportadora = 0;
 
   for (const r of rows) {
     const perf = parsePerformance(r["PERFORMANCE"] ?? "0");
-    if (perf <= 0) continue; // só conta atrasos
+    if (perf <= 0) continue;
     const resp = r["RESP CLIENTE"]?.trim().toUpperCase();
     if (resp === "SIM") respCliente++;
     else respTransportadora++;
@@ -157,8 +162,8 @@ export function getMotivoNaoEntrega(ref?: string): ChartCompareDatum[] {
 // KPI_003 — OTD Index (fração 0-1)
 // ---------------------------------------------------------------------------
 
-export function getKpiOTD(ref?: string): number {
-  const rows = getRows(ref);
+export async function getKpiOTD(range: DateRange): Promise<number> {
+  const rows = await getRows(range);
   if (rows.length === 0) return 0;
   const noPrazoOuAntes = rows.filter(
     (r) => parsePerformance(r["PERFORMANCE"] ?? "0") <= 0,

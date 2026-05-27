@@ -11,7 +11,8 @@
       "Bash(node -e \"require\\('pg'\\)\")",
       "Bash(node -e \"require\\('@neondatabase/serverless'\\)\")",
       "Bash(npm run *)",
-      "Bash(taskkill //F //IM node.exe)"
+      "Bash(taskkill //F //IM node.exe)",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\cadu\\\\OneDrive\\\\Documentos\\\\FGVJr\\\\digital\\\\dash-luciana\\\\Dashboard_Luciana\\\\app\" -Recurse -File | Where-Object {$_.Extension -match '\\\\.\\(tsx|ts\\)$'} | Select-Object FullName | Sort-Object -Property FullName)"
     ]
   }
 }

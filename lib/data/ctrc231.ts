@@ -1,32 +1,32 @@
 /**
- * Agregações de Pipeline de Faturamento — ctrc_231.csv
+ * Agregações de Pipeline de Faturamento — ssw_extractions (ctrc/231).
  * (CTRCs disponíveis para faturar com resultado comercial abaixo do mínimo)
  *
- * Colunas disponíveis nesta versão do CSV:
+ * Colunas no payload:
  *   CTRC, Emissao, Cliente, UnidOrigem, PracaDestino,
  *   Tabela, ResultComerc, ResultComercMin, Diferenca
  *
- * Nota: esta é a versão resumida do relatório. ResultComerc é um deficit
- * de resultado comercial (valor negativo = abaixo do mínimo aceitável),
- * NÃO é o valor do frete. OPR_007 (comprovantes) e OPR_009 (CIF/FOB)
- * não têm dados nesta versão e retornam vazio.
+ * Campo de data canônico: `Emissao` (dd/mm/yy).
  */
 
-import { readCsvAuto } from "./csvParser";
+import { getLatestPayloadsInRange } from "./ssw";
 import type { ChartCompareDatum } from "../chartTypes";
+import type { DateRange } from "./dateRange";
 
-const FILE = "ctrc_231.csv";
+const PASTA = "ctrc";
+const CODIGO = 231;
+const DATE_FIELD = "Emissao";
 
-function getRows(ref?: string) {
-  return readCsvAuto(FILE, ref).rows;
+async function getRows(range: DateRange) {
+  return getLatestPayloadsInRange(PASTA, CODIGO, DATE_FIELD, range);
 }
 
 // ---------------------------------------------------------------------------
 // OPR_006 — Pipeline de Faturamento por Cliente (contagem de CTRCs)
 // ---------------------------------------------------------------------------
 
-export function getPipelineByCliente(n = 10, ref?: string): ChartCompareDatum[] {
-  const rows = getRows(ref);
+export async function getPipelineByCliente(n: number, range: DateRange): Promise<ChartCompareDatum[]> {
+  const rows = await getRows(range);
   const byCliente: Record<string, number> = {};
 
   for (const r of rows) {
@@ -44,8 +44,8 @@ export function getPipelineByCliente(n = 10, ref?: string): ChartCompareDatum[] 
 // OPR_008 — CTRCs por Tabela de Cálculo
 // ---------------------------------------------------------------------------
 
-export function getByUltimaOcorrencia(ref?: string): ChartCompareDatum[] {
-  const rows = getRows(ref);
+export async function getByUltimaOcorrencia(range: DateRange): Promise<ChartCompareDatum[]> {
+  const rows = await getRows(range);
   const byTabela: Record<string, number> = {};
 
   for (const r of rows) {
@@ -63,6 +63,7 @@ export function getByUltimaOcorrencia(ref?: string): ChartCompareDatum[] {
 // KPI_004 — CTRCs Disponíveis para Faturar (contagem)
 // ---------------------------------------------------------------------------
 
-export function getKpiTotalFaturar(ref?: string): number {
-  return getRows(ref).length;
+export async function getKpiTotalFaturar(range: DateRange): Promise<number> {
+  const rows = await getRows(range);
+  return rows.length;
 }
