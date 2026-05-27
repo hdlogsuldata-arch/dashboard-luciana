@@ -1,27 +1,33 @@
 /**
- * Agregações de Contas a Pagar — caixa_202.csv
+ * Agregações de Contas a Pagar — ssw_extractions (caixa/202).
  * (Pagamentos a fornecedores)
  *
- * Colunas relevantes:
+ * Colunas relevantes no payload:
  *   NumLancto, UnidPagadora, Fornecedor, Evento,
  *   ValorParcela, DataVencimento, DataPagamento, DataConciliacao
+ *
+ * Campo de data canônico: `DataVencimento` (dd/mm/yy).
  */
 
-import { readCsvAuto, parseBRL } from "./csvParser";
+import { getLatestPayloadsInRange } from "./ssw";
+import { parseBRL } from "./csvParser";
 import type { ChartCompareDatum } from "../chartTypes";
+import type { DateRange } from "./dateRange";
 
-const FILE = "caixa_202.csv";
+const PASTA = "caixa";
+const CODIGO = 202;
+const DATE_FIELD = "DataVencimento";
 
-function getRows(ref?: string) {
-  return readCsvAuto(FILE, ref).rows;
+async function getRows(range: DateRange) {
+  return getLatestPayloadsInRange(PASTA, CODIGO, DATE_FIELD, range);
 }
 
 // ---------------------------------------------------------------------------
 // FIN_007 — Despesas por Categoria (Evento)
 // ---------------------------------------------------------------------------
 
-export function getByEvento(ref?: string): ChartCompareDatum[] {
-  const rows = getRows(ref);
+export async function getByEvento(range: DateRange): Promise<ChartCompareDatum[]> {
+  const rows = await getRows(range);
   const byEvento: Record<string, number> = {};
 
   for (const r of rows) {
@@ -39,8 +45,8 @@ export function getByEvento(ref?: string): ChartCompareDatum[] {
 // FIN_008 — Top N Fornecedores
 // ---------------------------------------------------------------------------
 
-export function getTopFornecedores(n = 10, ref?: string): ChartCompareDatum[] {
-  const rows = getRows(ref);
+export async function getTopFornecedores(n: number, range: DateRange): Promise<ChartCompareDatum[]> {
+  const rows = await getRows(range);
   const byFornecedor: Record<string, number> = {};
 
   for (const r of rows) {
@@ -59,8 +65,8 @@ export function getTopFornecedores(n = 10, ref?: string): ChartCompareDatum[] {
 // FIN_009 — Despesas por Unidade Pagadora
 // ---------------------------------------------------------------------------
 
-export function getByUnidade(ref?: string): ChartCompareDatum[] {
-  const rows = getRows(ref);
+export async function getByUnidade(range: DateRange): Promise<ChartCompareDatum[]> {
+  const rows = await getRows(range);
   const byUnid: Record<string, number> = {};
 
   for (const r of rows) {
@@ -78,15 +84,14 @@ export function getByUnidade(ref?: string): ChartCompareDatum[] {
 // FIN_010 — Status de Pagamentos (pago vs pendente)
 // ---------------------------------------------------------------------------
 
-export function getStatusPagamentos(ref?: string): ChartCompareDatum[] {
-  const rows = getRows(ref);
+export async function getStatusPagamentos(range: DateRange): Promise<ChartCompareDatum[]> {
+  const rows = await getRows(range);
   let pago = 0;
   let pendente = 0;
 
   for (const r of rows) {
     const valor = parseBRL(r["ValorParcela"] ?? "0");
     const dataPgto = r["DataPagamento"]?.trim();
-    // DataPagamento vazio ou só espaços = pendente
     if (dataPgto && dataPgto.length > 0) {
       pago += valor;
     } else {
@@ -104,7 +109,7 @@ export function getStatusPagamentos(ref?: string): ChartCompareDatum[] {
 // KPI auxiliar — Total de despesas do período
 // ---------------------------------------------------------------------------
 
-export function getKpiTotalDespesas(ref?: string): number {
-  const rows = getRows(ref);
+export async function getKpiTotalDespesas(range: DateRange): Promise<number> {
+  const rows = await getRows(range);
   return rows.reduce((sum, r) => sum + parseBRL(r["ValorParcela"] ?? "0"), 0);
 }
