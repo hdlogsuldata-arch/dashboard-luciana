@@ -13,34 +13,54 @@ import {
   getKpiTotalFaturar,
 } from "@/lib/data/ctrc231";
 import { getOTDSeries } from "@/lib/data/neon-series";
+import { rangeFromRequest } from "@/lib/data/dateRange";
 
 export async function GET(req: NextRequest) {
-  const ref = req.nextUrl.searchParams.get("ref") ?? undefined;
+  const range = rangeFromRequest(req.nextUrl.searchParams);
 
   try {
-    // `charts` = snapshot do mês (CSV). `series` = histórico temporal (Neon).
-    const oprSeries001 = await getOTDSeries();
+    const [
+      oprSeries001,
+      kpi003,
+      kpi004,
+      opr001,
+      opr002,
+      opr003,
+      opr004,
+      opr005,
+      opr006,
+      opr008,
+    ] = await Promise.all([
+      getOTDSeries(),
+      getKpiOTD(range),
+      getKpiTotalFaturar(range),
+      getOTDRate(range),
+      getPerformanceDistribution(range),
+      getPerformanceByCliente(15, range),
+      getPerformanceByUF(range),
+      getMotivoNaoEntrega(range),
+      getPipelineByCliente(10, range),
+      getByUltimaOcorrencia(range),
+    ]);
 
-    const data = {
+    return NextResponse.json({
       kpis: {
-        KPI_003: getKpiOTD(ref),
-        KPI_004: getKpiTotalFaturar(ref),
+        KPI_003: kpi003,
+        KPI_004: kpi004,
       },
       charts: {
-        OPR_001: getOTDRate(ref),
-        OPR_002: getPerformanceDistribution(ref),
-        OPR_003: getPerformanceByCliente(15, ref),
-        OPR_004: getPerformanceByUF(ref),
-        OPR_005: getMotivoNaoEntrega(ref),
-        OPR_006: getPipelineByCliente(10, ref),
-        OPR_008: getByUltimaOcorrencia(ref),
+        OPR_001: opr001,
+        OPR_002: opr002,
+        OPR_003: opr003,
+        OPR_004: opr004,
+        OPR_005: opr005,
+        OPR_006: opr006,
+        OPR_008: opr008,
       },
       series: {
         OPR_001: oprSeries001,
       },
-    };
-
-    return NextResponse.json(data);
+    });
   } catch (err) {
     console.error("[api/charts/operacional]", err);
     return NextResponse.json(

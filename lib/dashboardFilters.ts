@@ -1,27 +1,30 @@
 "use client";
 
 import { createContext, useContext } from "react";
+import {
+  defaultRange,
+  type DatePreset,
+  type DateRange,
+} from "./data/dateRange";
+
+export type GlobalDateBounds = { earliest: Date; latest: Date } | null;
 
 export type DashboardFilterContextValue = {
-  ref: string;              // mês selecionado: "2026-04"
-  setRef: (r: string) => void;
-  availableMonths: string[];
+  range: DateRange;
+  setRange: (r: DateRange) => void;
+  setPreset: (p: DatePreset) => void;
+  globalRange: GlobalDateBounds;
 };
 
 export const DashboardFilterContext = createContext<DashboardFilterContextValue>({
-  ref: "2026-04",
-  setRef: () => {},
-  availableMonths: ["2026-04"],
+  range: defaultRange(),
+  setRange: () => {},
+  setPreset: () => {},
+  globalRange: null,
 });
 
 export function useDashboardFilter() {
   return useContext(DashboardFilterContext);
 }
 
-/** Formata "2026-04" como "Abril/2026" em pt-BR */
-export function formatMonthLabel(ref: string): string {
-  const [year, month] = ref.split("-");
-  if (!year || !month) return ref;
-  const date = new Date(parseInt(year), parseInt(month) - 1, 1);
-  return date.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
-}
+export { formatDateRangeLabel } from "./data/dateRange";

@@ -187,12 +187,12 @@ const aggEvento: AggFn = (rows) => {
   return Object.entries(byEvento).map(([name, value]) => ({ name, value }));
 };
 
-/** FIN_012 — receita de frete por cliente (cliente/203) */
+/** FIN_012 — receita de frete por cliente (ctrc/174 — linhas individuais com data) */
 const aggReceitaCliente: AggFn = (rows) => {
   const byCliente: Record<string, number> = {};
   for (const r of rows) {
-    const cliente = r["Cliente"]?.trim() || "Desconhecido";
-    byCliente[cliente] = (byCliente[cliente] ?? 0) + parseBRL(r["ValorFrete"]);
+    const cliente = r["pagador_nome"]?.trim() || "Desconhecido";
+    byCliente[cliente] = (byCliente[cliente] ?? 0) + parseBRL(r["valor_frete"]);
   }
   return Object.entries(byCliente).map(([name, value]) => ({ name, value }));
 };
@@ -252,7 +252,7 @@ export function getDespesasSeries(): Promise<ChartSeries[]> {
 /** FIN_012 — Receita de Frete dos top 10 clientes ao longo do tempo */
 export function getTopClientesSeries(): Promise<ChartSeries[]> {
   return safe(async () => {
-    const groups = await getSnapshots("cliente", 203);
+    const groups = await getSnapshots("ctrc", 174);
     const top = topCategories(groups, aggReceitaCliente, 10);
     return liftToSeries(groups, aggReceitaCliente, top, false);
   }, "FIN_012 top clientes");
