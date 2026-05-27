@@ -9,7 +9,9 @@
       "Bash(npx prisma *)",
       "Bash(node -e ' *)",
       "Bash(node -e \"require\\('pg'\\)\")",
-      "Bash(node -e \"require\\('@neondatabase/serverless'\\)\")"
+      "Bash(node -e \"require\\('@neondatabase/serverless'\\)\")",
+      "Bash(npm run *)",
+      "Bash(taskkill //F //IM node.exe)"
     ]
   }
 }
