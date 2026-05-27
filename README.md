@@ -1,36 +1,114 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Dashboard Luciana
 
-## Getting Started
+Dashboard gerencial desenvolvido pela FGV Jr para visualização de KPIs e indicadores operacionais de uma empresa de transporte de cargas.
 
-First, run the development server:
+## Funcionalidades
+
+- **Dashboard personalizado por usuário** — cada usuário escolhe quais KPIs e gráficos exibir
+- **Painel administrativo** — gestão de usuários, permissões e metas
+- **Metas e acompanhamento** — criação de metas vinculadas a indicadores com status automático (No Prazo, Em Risco, Atrasada, Alcançada)
+- **Série histórica** — visualização de dados ao longo do tempo via Recharts
+- **Autenticação segura** — JWT com controle de roles (Admin, Manager, Analyst, Operator, Viewer)
+
+## Stack
+
+| Camada | Tecnologia |
+|--------|-----------|
+| Framework | Next.js 16 (App Router) |
+| UI | React 19 + TailwindCSS 4 |
+| Linguagem | TypeScript |
+| ORM | Prisma 6 |
+| Banco de dados | PostgreSQL (Neon serverless) |
+| Gráficos | Recharts |
+| Auth | JWT (jsonwebtoken + bcryptjs) |
+| Validação | Zod v4 |
+
+## Pré-requisitos
+
+- Node.js 20+
+- Conta no [Neon](https://neon.tech) (ou outro PostgreSQL)
+
+## Configuração
+
+1. Clone o repositório e instale as dependências:
+
+```bash
+npm install
+```
+
+2. Crie o arquivo `.env` na raiz do projeto:
+
+```env
+DATABASE_URL="postgresql://..."
+JWT_SECRET="sua-chave-secreta"
+```
+
+3. Aplique as migrations e execute o seed:
+
+```bash
+npx prisma migrate deploy
+npm run seed
+```
+
+4. Inicie o servidor de desenvolvimento:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Acesse [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Scripts disponíveis
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Comando | Descrição |
+|---------|-----------|
+| `npm run dev` | Inicia o servidor de desenvolvimento |
+| `npm run build` | Gera o build de produção |
+| `npm run start` | Inicia o servidor em produção |
+| `npm run lint` | Executa o ESLint |
+| `npm run seed` | Popula o banco com dados iniciais |
 
-## Learn More
+## Estrutura principal
 
-To learn more about Next.js, take a look at the following resources:
+```
+app/
+  api/          # Rotas de API (Next.js route handlers)
+    admin/      # Endpoints administrativos (requireAdmin)
+    auth/       # Login e autenticação
+  (dashboard)/  # Páginas protegidas do dashboard
+  login/        # Página de login
+components/
+  admin/        # Componentes do painel admin (usuários, metas)
+  ui/           # Componentes genéricos de interface
+lib/
+  auth-server.ts   # requireAuth / requireAdmin
+  api.ts           # Helper apiFetch (anexa JWT do localStorage)
+  charts/
+    registry.ts    # KPI_REGISTRY (7 KPIs) e CHART_REGISTRY (30 gráficos)
+  formatter.ts     # Formatadores: brl, pct, int, days, km, m3
+prisma/
+  schema.prisma    # Schema do banco de dados
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Modelos de dados
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+| Modelo | Descrição |
+|--------|-----------|
+| `User` | Usuários com roles e dashboards permitidos |
+| `Meta` | Metas vinculadas a gráficos com prazo e status |
+| `Ctrc` | Conhecimentos de transporte (documentos de frete) |
+| `Motorista` | Cadastro de motoristas |
+| `Veiculo` | Frota de veículos |
+| `Vendedor` | Equipe de vendas |
+| `Lancamento` | Lançamentos financeiros |
+| `Ocorrencia` | Ocorrências em CTRCs |
 
-## Deploy on Vercel
+## Roles de acesso
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+| Role | Permissões |
+|------|-----------|
+| `ADMIN` | Acesso total, incluindo painel admin |
+| `MANAGER` | Visualização e edição de dados operacionais |
+| `ANALYST` | Acesso analítico ao dashboard |
+| `OPERATOR` | Acesso operacional restrito |
+| `VIEWER` | Somente leitura |

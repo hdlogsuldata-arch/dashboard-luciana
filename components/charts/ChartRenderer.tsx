@@ -53,6 +53,39 @@ function displayName(raw: any): string {
   return s;
 }
 
+/** Trunca o label para exibição na legenda; o nome completo fica no title para hover. */
+function truncateLegendLabel(label: string, maxLen = 12): string {
+  return label.length > maxLen ? label.slice(0, maxLen) + "…" : label;
+}
+
+/**
+ * Tick customizado para o eixo X: inclina o rótulo a `angle` graus (default -35),
+ * trunca nomes longos com "…" e expõe o nome completo via <title> (tooltip nativo).
+ * Usado em gráficos de barra simples com muitas/longas categorias para evitar
+ * que o Recharts esconda rótulos sobrepostos.
+ */
+function AngledTick(props: any) {
+  const { x, y, payload, angle = -35, fontScale = 1, maxLen = 12 } = props;
+  const full = displayName(payload?.value);
+  const label = truncateLegendLabel(full, maxLen);
+  return (
+    <g transform={`translate(${x},${y})`}>
+      <text
+        transform={`rotate(${angle})`}
+        x={0}
+        y={0}
+        dy={Math.round(4 * fontScale)}
+        textAnchor="end"
+        fill={THEME.textMuted}
+        fontSize={Math.round(11 * fontScale)} // = fs(11)
+      >
+        <title>{full}</title>
+        {label}
+      </text>
+    </g>
+  );
+}
+
 function computeTopWithHeadroom(dataMax: number, targetValue: number): number {
   return Math.max(dataMax, targetValue) * 1.18;
 }
@@ -185,6 +218,24 @@ export function ChartRenderer({
     cursor: { fill: "rgba(255,255,255,0.04)" },
   };
 
+  // ── Eixo X inclinado (barra simples com muitas/longas categorias) ───────────
+  // Inclina os rótulos a -35° quando há risco de sobreposição, reservando a
+  // altura vertical necessária. Rótulos curtos (ex.: meses "Jan") ficam horizontais.
+  const xAxisCfg = useMemo(() => {
+    const labels = (compareData ?? []).map((d) => displayName(d.name));
+    const count = labels.length;
+    const maxLen = labels.reduce((m, s) => Math.max(m, s.length), 0);
+    // maxLen<=6 nunca inclina; senão inclina se há muitos OU rótulos bem longos.
+    const shouldAngle = maxLen > 6 && (count > 6 || maxLen > 10);
+    const tickMaxLen = fontScale >= 1.4 ? 16 : 12; // fullscreen cabe mais
+    const fsTick = Math.round(11 * fontScale);
+    // Altura = projeção vertical do rótulo rotacionado + folga (escala c/ fontScale).
+    const height = shouldAngle
+      ? Math.ceil(tickMaxLen * 0.6 * fsTick * Math.sin((35 * Math.PI) / 180) + 8 * fontScale)
+      : undefined;
+    return { shouldAngle, tickMaxLen, height };
+  }, [compareData, fontScale]);
+
   // ── Formatters de tooltip ──────────────────────────────────────────────────
 
   const tooltipLabelFormatter = (label: any) => displayName(label);
@@ -220,7 +271,7 @@ export function ChartRenderer({
             return (
               <div key={`${rawValue}-${dataKey}`} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: fs(11), color: THEME.textMuted }}>
                 <span style={{ display: "inline-block", width: 10, height: 10, borderRadius: 2, background: item?.color ?? THEME.textMuted }} />
-                <span>{label}</span>
+                <span title={label}>{truncateLegendLabel(label)}</span>
               </div>
             );
           })}
@@ -308,7 +359,18 @@ export function ChartRenderer({
                 </linearGradient>
               </defs>
               <CartesianGrid vertical={false} stroke={THEME.grid} />
-              <XAxis dataKey="name" tick={tickStyle} axisLine={axisLineStyle} tickLine={false} />
+              <XAxis
+                dataKey="name"
+                axisLine={axisLineStyle}
+                tickLine={false}
+                interval={xAxisCfg.shouldAngle ? 0 : undefined}
+                height={xAxisCfg.height}
+                tick={
+                  xAxisCfg.shouldAngle
+                    ? <AngledTick fontScale={fontScale} maxLen={xAxisCfg.tickMaxLen} angle={-35} />
+                    : tickStyle
+                }
+              />
               <YAxis width={yAxisWidth} tick={tickStyle} axisLine={axisLineStyle} tickLine={false} tickMargin={6}
                 tickFormatter={(v) => metricFormat(safeNum(v))}
                 label={yAxisLabel ? { value: yAxisLabel, angle: -90, position: "insideLeft", offset: -20, style: yAxisLabelStyle } : undefined}
@@ -344,8 +406,9 @@ export function ChartRenderer({
                 const name = displayName(value);
                 const found = donutData.find((d) => d.name === name);
                 const v = found ? safeNum(found.value) : 0;
+                const displayLabel = truncateLegendLabel(name);
                 return (
-                  <span style={{ color: THEME.textMuted }}>{`${name} — ${metricFormat(v)}`}</span>
+                  <span title={name} style={{ color: THEME.textMuted }}>{`${displayLabel} — ${metricFormat(v)}`}</span>
                 );
               }}
             />
