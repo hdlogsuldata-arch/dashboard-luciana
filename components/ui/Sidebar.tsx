@@ -10,6 +10,7 @@ import {
   Truck,
   Target,
   Users,
+  Building2,
   LogOut,
 } from "lucide-react";
 
@@ -19,6 +20,7 @@ const DASHBOARD_META: Record<string, { icon: React.ReactNode; href: string }> = 
   dash_frota:       { icon: <Truck size={18} />, href: "/dashboard/frota" },
   metas:            { icon: <Target size={18} />, href: "/dashboard/metas" },
   usuarios:         { icon: <Users size={18} />, href: "/admin/usuarios" },
+  clientes:         { icon: <Building2 size={18} />, href: "/admin/clientes" },
 };
 
 export default function Sidebar() {
@@ -28,6 +30,7 @@ export default function Sidebar() {
 
   const visibleDashboards = DASHBOARDS.filter((d) => {
     if (d.id === "usuarios") return user?.role === "ADMIN";
+    if (d.id === "clientes") return user?.role === "ADMIN";
     return true;
   });
 
