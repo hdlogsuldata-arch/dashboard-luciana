@@ -58,7 +58,7 @@ export default function OperacionalPage() {
   useEffect(() => {
     setData(null);
     setError(false);
-    fetch(`/api/charts/operacional?${rangeToQuery(range)}`)
+    fetch(`/api/charts/operacional?${rangeToQuery(range)}`, { cache: "no-store" })
       .then((r) => r.json())
       .then(setData)
       .catch(() => setError(true));

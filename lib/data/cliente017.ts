@@ -16,6 +16,8 @@
  */
 
 import { getLatestPayloadsInRange } from "./ssw";
+import { getExclusionSet } from "./cnpjExcluido";
+import { normalizeCnpj } from "./cnpjFormat";
 import type { ChartCompareDatum } from "../chartTypes";
 import type { DateRange } from "./dateRange";
 
@@ -24,7 +26,12 @@ const CODIGO = 17;
 const DATE_FIELD = "DATA AUTORIZACAO";
 
 async function getRows(range: DateRange) {
-  return getLatestPayloadsInRange(PASTA, CODIGO, DATE_FIELD, range);
+  const [rows, exclusion] = await Promise.all([
+    getLatestPayloadsInRange(PASTA, CODIGO, DATE_FIELD, range),
+    getExclusionSet(),
+  ]);
+  if (exclusion.cnpjs.size === 0) return rows;
+  return rows.filter((r) => !exclusion.cnpjs.has(normalizeCnpj(r["CNPJ PAGADOR"])));
 }
 
 function parsePerformance(s: string): number {

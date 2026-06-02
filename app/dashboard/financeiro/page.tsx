@@ -58,7 +58,7 @@ export default function FinanceiroPage() {
   useEffect(() => {
     setData(null);
     setError(false);
-    fetch(`/api/charts/financeiro?${rangeToQuery(range)}`)
+    fetch(`/api/charts/financeiro?${rangeToQuery(range)}`, { cache: "no-store" })
       .then((r) => r.json())
       .then(setData)
       .catch(() => setError(true));
