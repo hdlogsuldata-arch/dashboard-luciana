@@ -221,6 +221,17 @@ model Meta {
   updatedAt   DateTime   @updatedAt
 }
 
+model CnpjExcluido {
+  cnpj         String   @id
+  nomeEmpresa  String
+  notas        String?
+  criadoPor    String
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  @@index([nomeEmpresa])
+}
+
 model SnapshotImport {
   id            Int      @id @default(autoincrement())
   referenceDate String
@@ -232,17 +243,6 @@ model SnapshotImport {
 
   @@unique([referenceDate, filename])
   @@index([referenceDate])
-}
-
-model ClienteFiltro {
-  id        Int      @id @default(autoincrement())
-  cnpj      String   @unique
-  nome      String?
-  excluido  Boolean  @default(false)
-  grupo     String?
-  motivo    String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
 }
 
 model migrations {

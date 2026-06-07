@@ -10,6 +10,8 @@
  */
 
 import { getLatestPayloadsInRange } from "./ssw";
+import { getExclusionSet } from "./cnpjExcluido";
+import { normalizeNome } from "./cnpjFormat";
 import type { ChartCompareDatum } from "../chartTypes";
 import type { DateRange } from "./dateRange";
 
@@ -17,8 +19,14 @@ const PASTA = "ctrc";
 const CODIGO = 231;
 const DATE_FIELD = "Emissao";
 
+// ctrc/231 não tem CNPJ no payload — filtra por nome de cliente normalizado.
 async function getRows(range: DateRange) {
-  return getLatestPayloadsInRange(PASTA, CODIGO, DATE_FIELD, range);
+  const [rows, exclusion] = await Promise.all([
+    getLatestPayloadsInRange(PASTA, CODIGO, DATE_FIELD, range),
+    getExclusionSet(),
+  ]);
+  if (exclusion.nomes.size === 0) return rows;
+  return rows.filter((r) => !exclusion.nomes.has(normalizeNome(r["Cliente"])));
 }
 
 // ---------------------------------------------------------------------------
