@@ -49,7 +49,7 @@ export default function FrotaPage() {
   useEffect(() => {
     setData(null);
     setError(false);
-    fetch(`/api/charts/frota?${rangeToQuery(range)}`)
+    fetch(`/api/charts/frota?${rangeToQuery(range)}`, { cache: "no-store" })
       .then((r) => r.json())
       .then(setData)
       .catch(() => setError(true));

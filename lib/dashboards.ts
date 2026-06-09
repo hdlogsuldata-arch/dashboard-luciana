@@ -9,4 +9,5 @@ export const DASHBOARDS: Dashboard[] = [
   { id: "dash_frota",       label: "Dashboard de Frota" },
   { id: "metas",            label: "Gestão de Metas" },
   { id: "usuarios",         label: "Gestão de Usuários" },
+  { id: "configuracoes",    label: "Configurações" },
 ];

@@ -13,6 +13,7 @@
 
 import { getLatestPayloads, getLatestPayloadsInRange } from "./ssw";
 import { parseBRL } from "./csvParser";
+import { normalizeCnpj } from "./cnpjFormat";
 import type { ChartCompareDatum } from "../chartTypes";
 import type { DateRange } from "./dateRange";
 
@@ -24,17 +25,12 @@ async function getRows(range: DateRange) {
   return getLatestPayloadsInRange(PASTA, CODIGO, DATE_FIELD, range);
 }
 
-/** Normaliza CNPJ removendo pontuação, mantendo só dígitos. */
-function normCnpj(s: string | undefined): string {
-  return (s ?? "").replace(/\D/g, "");
-}
-
 /** Dicionário CNPJ → ABC montado a partir do snapshot atual de cliente/203. */
 async function getAbcByCnpj(): Promise<Map<string, string>> {
   const rows = await getLatestPayloads("cliente", 203);
   const map = new Map<string, string>();
   for (const r of rows) {
-    const cnpj = normCnpj(r["CNPJ"]);
+    const cnpj = normalizeCnpj(r["CNPJ"]);
     if (!cnpj) continue;
     const abc = r["ClienteABC"]?.trim();
     if (abc) map.set(cnpj, abc);
@@ -51,7 +47,7 @@ export async function getReceitaByABC(range: DateRange): Promise<ChartCompareDat
   const byABC: Record<string, number> = {};
 
   for (const r of rows) {
-    const cnpj = normCnpj(r["pag_cnpj"]);
+    const cnpj = normalizeCnpj(r["pag_cnpj"]);
     const abc = abcByCnpj.get(cnpj) || "Sem ABC";
     const frete = parseBRL(r["valor_frete"] ?? "0");
     byABC[abc] = (byABC[abc] ?? 0) + frete;

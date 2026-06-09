@@ -58,9 +58,9 @@ export default function DashboardHome() {
     const q = `?${rangeToQuery(range)}`;
     Promise.all([
       fetch("/api/kpis/me").then((r) => r.json()).catch(() => ({ slots: [] })),
-      fetch(`/api/charts/financeiro${q}`).then((r) => r.json()).catch(() => null),
-      fetch(`/api/charts/operacional${q}`).then((r) => r.json()).catch(() => null),
-      fetch(`/api/charts/frota${q}`).then((r) => r.json()).catch(() => null),
+      fetch(`/api/charts/financeiro${q}`, { cache: "no-store" }).then((r) => r.json()).catch(() => null),
+      fetch(`/api/charts/operacional${q}`, { cache: "no-store" }).then((r) => r.json()).catch(() => null),
+      fetch(`/api/charts/frota${q}`, { cache: "no-store" }).then((r) => r.json()).catch(() => null),
     ]).then(([kpiRes, fin, opr, flt]) => {
       setKpiSlots(kpiRes.slots ?? []);
       setFinData(fin);
