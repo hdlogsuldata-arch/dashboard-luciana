@@ -13,9 +13,13 @@ import {
   getKpiTotalFrota,
   getKpiTaxaRastreamento,
 } from "@/lib/data/tabelas245";
+import { requireDashboard } from "@/lib/auth-server";
 
 // Frota não tem campo de data útil — query é ignorada, sempre snapshot atual.
-export async function GET(_req: NextRequest) {
+export async function GET(req: NextRequest) {
+  const auth = requireDashboard(req, "/dashboard/frota");
+  if (auth instanceof NextResponse) return auth;
+
   try {
     const [
       kpi006,

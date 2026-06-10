@@ -9,6 +9,7 @@ interface User {
   role: string;
   name?: string | null;
   mustChangePassword?: boolean;
+  allowedDashboards?: string[];
 }
 
 export interface AuthContextType {

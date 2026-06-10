@@ -3,7 +3,7 @@
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/app/auth/AuthContext";
 import Logo from "./Logo";
-import { DASHBOARDS } from "@/lib/dashboards";
+import { visibleDashboards } from "@/lib/access";
 import {
   BarChart2,
   TrendingUp,
@@ -28,10 +28,7 @@ export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
 
-  const visibleDashboards = DASHBOARDS.filter((d) => {
-    if (d.id === "usuarios" || d.id === "configuracoes") return user?.role === "ADMIN";
-    return true;
-  });
+  const visible = visibleDashboards(user?.role, user?.allowedDashboards);
 
   function isActive(href: string) {
     if (href === "/dashboard") return pathname === "/dashboard";
@@ -47,7 +44,7 @@ export default function Sidebar() {
 
       {/* Nav */}
       <nav className="flex-1 overflow-y-auto px-3 py-4 flex flex-col gap-1">
-        {visibleDashboards.map((d) => {
+        {visible.map((d) => {
           const meta = DASHBOARD_META[d.id];
           if (!meta) return null;
           const active = isActive(meta.href);

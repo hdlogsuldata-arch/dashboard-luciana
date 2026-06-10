@@ -11,6 +11,8 @@ import type { KpiId } from "@/lib/charts/registry";
 import type { ChartCompareDatum } from "@/lib/chartTypes";
 import { useDashboardFilter } from "@/lib/dashboardFilters";
 import { rangeToQuery } from "@/lib/data/dateRange";
+import { useAuth } from "@/app/auth/AuthContext";
+import { canAccessPath } from "@/lib/access";
 
 type KpiSlot = { position: number; kpiId: string };
 
@@ -25,6 +27,12 @@ type Configs = Record<"financeiro" | "operacional" | "frota", SectionConfig>;
 export default function DashboardHome() {
   const router = useRouter();
   const { range } = useDashboardFilter();
+  const { user } = useAuth();
+
+  // Só exibe/busca as seções que o usuário pode ver (mesma regra do middleware).
+  const canFin = canAccessPath("/dashboard/financeiro", user?.role, user?.allowedDashboards);
+  const canOpr = canAccessPath("/dashboard/operacional", user?.role, user?.allowedDashboards);
+  const canFlt = canAccessPath("/dashboard/frota", user?.role, user?.allowedDashboards);
 
   const [kpiSlots, setKpiSlots] = useState<KpiSlot[] | null>(null);
   const [configs, setConfigs]   = useState<Configs | null>(null);
@@ -56,18 +64,26 @@ export default function DashboardHome() {
     setFltData(null);
 
     const q = `?${rangeToQuery(range)}`;
+    const EMPTY: ApiData = { kpis: {}, charts: {} };
+    const fetchSection = (allowed: boolean, url: string) =>
+      allowed
+        ? fetch(url, { cache: "no-store" })
+            .then((r) => (r.ok ? r.json() : EMPTY))
+            .catch(() => EMPTY)
+        : Promise.resolve(EMPTY);
+
     Promise.all([
       fetch("/api/kpis/me").then((r) => r.json()).catch(() => ({ slots: [] })),
-      fetch(`/api/charts/financeiro${q}`, { cache: "no-store" }).then((r) => r.json()).catch(() => null),
-      fetch(`/api/charts/operacional${q}`, { cache: "no-store" }).then((r) => r.json()).catch(() => null),
-      fetch(`/api/charts/frota${q}`, { cache: "no-store" }).then((r) => r.json()).catch(() => null),
+      fetchSection(canFin, `/api/charts/financeiro${q}`),
+      fetchSection(canOpr, `/api/charts/operacional${q}`),
+      fetchSection(canFlt, `/api/charts/frota${q}`),
     ]).then(([kpiRes, fin, opr, flt]) => {
       setKpiSlots(kpiRes.slots ?? []);
       setFinData(fin);
       setOprData(opr);
       setFltData(flt);
     });
-  }, [range.startDate.getTime(), range.endDate.getTime()]);
+  }, [range.startDate.getTime(), range.endDate.getTime(), canFin, canOpr, canFlt]);
 
   function getKpiValue(kpiId: string): number | null {
     const meta = KPI_REGISTRY.find((k) => k.id === kpiId);
@@ -134,24 +150,30 @@ export default function DashboardHome() {
 
         {/* 3 section previews */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 24 }}>
-          <Section
-            title="Financeiro"
-            href="/dashboard/financeiro"
-            chartIds={(configs?.financeiro.chartIds ?? []).slice(0, 2)}
-            getData={getChartData}
-          />
-          <Section
-            title="Operacional"
-            href="/dashboard/operacional"
-            chartIds={(configs?.operacional.chartIds ?? []).slice(0, 2)}
-            getData={getChartData}
-          />
-          <Section
-            title="Frota"
-            href="/dashboard/frota"
-            chartIds={(configs?.frota.chartIds ?? []).slice(0, 2)}
-            getData={getChartData}
-          />
+          {canFin && (
+            <Section
+              title="Financeiro"
+              href="/dashboard/financeiro"
+              chartIds={(configs?.financeiro.chartIds ?? []).slice(0, 2)}
+              getData={getChartData}
+            />
+          )}
+          {canOpr && (
+            <Section
+              title="Operacional"
+              href="/dashboard/operacional"
+              chartIds={(configs?.operacional.chartIds ?? []).slice(0, 2)}
+              getData={getChartData}
+            />
+          )}
+          {canFlt && (
+            <Section
+              title="Frota"
+              href="/dashboard/frota"
+              chartIds={(configs?.frota.chartIds ?? []).slice(0, 2)}
+              getData={getChartData}
+            />
+          )}
         </div>
       </div>
     </AppShell>

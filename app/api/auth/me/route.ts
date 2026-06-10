@@ -41,6 +41,7 @@ export async function GET(req: NextRequest) {
         name: true,
         email: true,
         role: true,
+        allowedDashboards: true,
         createdAt: true,
         image: true,
         mustChangePassword: true,
@@ -51,9 +52,14 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Usuário não encontrado" }, { status: 404 });
     }
 
-    const newToken = jwt.sign({ sub: user.id, role: user.role }, JWT_SECRET, {
-      expiresIn: "7d",
-    });
+    // Re-assina com allowedDashboards FRESCO do banco — assim, toda vez que o
+    // client carrega a app (AuthContext chama /api/auth/me), o cookie é
+    // renovado com as permissões atuais (o admin pode tê-las alterado).
+    const newToken = jwt.sign(
+      { sub: user.id, role: user.role, allowedDashboards: user.allowedDashboards },
+      JWT_SECRET,
+      { expiresIn: "7d" },
+    );
 
     const res = NextResponse.json({ user, token: newToken });
 

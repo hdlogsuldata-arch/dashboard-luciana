@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import jwt from "jsonwebtoken";
+import { canAccessPath } from "./access";
 
 const JWT_SECRET = process.env.JWT_SECRET || "dev_secret_change_in_prod";
 
 export interface TokenPayload {
   sub: string;
   role: string;
+  allowedDashboards?: string[];
 }
 
 export function extractToken(req: NextRequest): string | null {
@@ -41,6 +43,23 @@ export function requireAdmin(req: NextRequest): TokenPayload | NextResponse {
   const result = requireAuth(req);
   if (result instanceof NextResponse) return result;
   if (result.role !== "ADMIN") {
+    return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
+  }
+  return result;
+}
+
+/**
+ * Exige auth + permissão para o dashboard cuja rota é `dashboardHref`.
+ * Bloqueia o vazamento de dados via fetch direto na API (o middleware NÃO
+ * roda em /api). Usa a mesma regra de canAccessPath do middleware/sidebar.
+ */
+export function requireDashboard(
+  req: NextRequest,
+  dashboardHref: string,
+): TokenPayload | NextResponse {
+  const result = requireAuth(req);
+  if (result instanceof NextResponse) return result;
+  if (!canAccessPath(dashboardHref, result.role, result.allowedDashboards)) {
     return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
   }
   return result;

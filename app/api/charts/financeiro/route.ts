@@ -27,8 +27,12 @@ import {
   getTopClientesSeries,
 } from "@/lib/data/neon-series";
 import { rangeFromRequest } from "@/lib/data/dateRange";
+import { requireDashboard } from "@/lib/auth-server";
 
 export async function GET(req: NextRequest) {
+  const auth = requireDashboard(req, "/dashboard/financeiro");
+  if (auth instanceof NextResponse) return auth;
+
   const range = rangeFromRequest(req.nextUrl.searchParams);
 
   try {

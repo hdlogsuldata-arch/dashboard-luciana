@@ -13,8 +13,10 @@ const loginSchema = z.object({
   password: z.string().min(1),
 });
 
-function signToken(userId: string, role: string) {
-  return jwt.sign({ sub: userId, role }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+function signToken(userId: string, role: string, allowedDashboards: string[]) {
+  return jwt.sign({ sub: userId, role, allowedDashboards }, JWT_SECRET, {
+    expiresIn: JWT_EXPIRES_IN,
+  });
 }
 
 export async function POST(req: NextRequest) {
@@ -66,7 +68,7 @@ export async function POST(req: NextRequest) {
     });
     console.log("attlizado")
 
-    const token = signToken(user.id, user.role);
+    const token = signToken(user.id, user.role, user.allowedDashboards);
 
     const res = NextResponse.json({
       token,
