@@ -6,7 +6,7 @@ import { canAccessPath, firstAllowedHref } from "@/lib/access";
 const JWT_SECRET = process.env.JWT_SECRET || "dev_secret_change_in_prod";
 
 const PUBLIC_ROUTES = ["/login", "/"];
-const ADMIN_ROUTES = ["/admin"];
+const ADMIN_ROUTES = ["/admin", "/dashboard/ctrcs"];
 const PUBLIC_FILE = /\.(.*)$/;
 
 type Decoded = { sub: string; role: string; allowedDashboards: string[] };

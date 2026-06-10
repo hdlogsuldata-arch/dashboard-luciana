@@ -48,6 +48,15 @@ const cases: Case[] = [
   { desc: "API charts/frota VIEWER barrado → 403", path: "/api/charts/frota", cookie: viewerFin, expectStatus: 403 },
   { desc: "API charts/financeiro VIEWER permitido → não 401/403", path: "/api/charts/financeiro", cookie: viewerFin, expectStatus: -1 },
   { desc: "API charts/operacional ADMIN → não 401/403", path: "/api/charts/operacional", cookie: adminTok, expectStatus: -1 },
+
+  // /dashboard/ctrcs restrito a ADMIN
+  { desc: "ctrcs sem token → login", path: "/dashboard/ctrcs", expectStatus: 307, expectLoc: "/login" },
+  { desc: "ctrcs VIEWER → redirect /dashboard", path: "/dashboard/ctrcs", cookie: viewerFin, expectStatus: 307, expectLoc: "/dashboard" },
+  { desc: "ctrcs ADMIN → 200", path: "/dashboard/ctrcs", cookie: adminTok, expectStatus: 200 },
+
+  // data-range exige autenticação (qualquer usuário logado)
+  { desc: "API data-range sem token → 401", path: "/api/charts/data-range", expectStatus: 401 },
+  { desc: "API data-range VIEWER → não 401/403", path: "/api/charts/data-range", cookie: viewerEmpty, expectStatus: -1 },
 ];
 
 async function main() {
